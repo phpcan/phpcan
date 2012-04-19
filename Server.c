@@ -187,12 +187,19 @@ static void request_handler(struct evhttp_request *req, void *arg)
     struct timeval tp = {0};
     ulong routeIndex = -1;
     
+    struct evbuffer *buffer = evbuffer_new();
+    
     // create request object
     MAKE_STD_ZVAL(request);
     object_init_ex(request, ce_buddel_server_request);
     Z_SET_REFCOUNT_P(request, 1);
     r = (struct php_buddel_server_request *)zend_object_store_get_object(request TSRMLS_CC);
     r->req = req;
+    
+    // set request time
+    if(gettimeofday(&tp, NULL) == 0 ) {
+        r->time = (double)(tp.tv_sec + tp.tv_usec / 1000000.00);
+    }
 
     const char * uri_path = evhttp_uri_get_path(req->uri_elems);
     if (uri_path == NULL) {
@@ -254,11 +261,6 @@ static void request_handler(struct evhttp_request *req, void *arg)
             // set route
             route = (struct php_buddel_server_route *)zend_object_store_get_object(*zroute TSRMLS_CC);
 
-            // set request time
-            if(gettimeofday(&tp, NULL) == 0 ) {
-                r->time = (double)(tp.tv_sec + tp.tv_usec / 1000000.00);
-            }
-
             // parse cookies
             cookie = evhttp_find_header(r->req->input_headers, "Cookie");
             if (cookie != NULL) {
@@ -267,6 +269,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 parse_cookies(cookie, &r->cookies TSRMLS_CC);
             }
 
+            // set query and parse GET parameters
             r->uri = estrdup(uri_path);
             const char *query = evhttp_uri_get_query(req->uri_elems);
             if (query != NULL) {
@@ -277,7 +280,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 php_default_treat_data(PARSE_STRING, q, r->get TSRMLS_CC);
             }
 
-            // post data
+            // parse POST parameters
             if (r->req->type == EVHTTP_REQ_POST) {
 
                 buffer_len = EVBUFFER_LENGTH(r->req->input_buffer);
@@ -307,8 +310,6 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 }
             }
             
-            struct evbuffer *buffer = evbuffer_new();
-            
             if (r->response_status == 0) {
                 
                 // call handler
@@ -319,13 +320,29 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 Z_ADDREF_P(args[1]);
 
                 if (call_user_function(EG(function_table), NULL, route->handler, &retval, 2, args TSRMLS_CC) == SUCCESS) {
-                    if (r->response_status == 0) {
-                        r->response_status = 200;
-                    }
-                    if (r->response_status >= 200 && r->response_status < 300) {
-                        if (Z_TYPE(retval) == IS_STRING) {
-                            if (Z_STRLEN(retval) > 0) {
-                                evbuffer_add(buffer, Z_STRVAL(retval), Z_STRLEN(retval));
+                    if (r->status != PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENT) {
+                        if (r->response_status == 0) {
+                            r->response_status = 200;
+                        }
+                        if (r->response_status >= 200 && r->response_status < 300) {
+                            if (Z_TYPE(retval) == IS_STRING) {
+                                if (Z_STRLEN(retval) > 0) {
+                                    r->response_len = Z_STRLEN(retval);
+                                    evbuffer_add(buffer, Z_STRVAL(retval), Z_STRLEN(retval));
+                                }
+                            } else if (Z_TYPE(retval) == IS_NULL) {
+                                // empty response
+                            } else {
+                                // non-scalar
+                                r->response_status = 500;
+                                spprintf(&r->error, 0, "Request handler must return a string instead of %s", 
+                                    Z_TYPE(retval) == IS_ARRAY ? "array" : 
+                                        Z_TYPE(retval) == IS_OBJECT ? "object" :
+                                            Z_TYPE(retval) == IS_LONG ? "integer" :
+                                                Z_TYPE(retval) == IS_DOUBLE ? "double" :
+                                                    Z_TYPE(retval) == IS_BOOL ? "boolean‚" :
+                                                        Z_TYPE(retval) == IS_RESOURCE ? "resource" : "unknown"
+                                );
                             }
                         }
                     }
@@ -334,30 +351,43 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 Z_DELREF_P(args[0]);
                 Z_DELREF_P(args[1]);
             }
-            
-            evhttp_send_reply(r->req, r->response_status, NULL, buffer);
-            evbuffer_free(buffer);
         }
-        
         zval_ptr_dtor(&params);
     }
+    
+    if(EG(exception)) {
+        if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_buddel_HTTPError TSRMLS_CC)) {
+            zval *code = NULL, *error = NULL;
+            code  = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "code", sizeof("code")-1, 1 TSRMLS_CC);
+            error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
+            r->response_status = code ? Z_LVAL_P(code) : 500;
+            spprintf(&r->error, 0, "%s", error ? Z_STRVAL_P(error) : "Unknown");
+        } else {
+            zval *file = NULL, *line = NULL, *error = NULL;
+            file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
+            line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
+            r->response_status = 500;
+            spprintf(&r->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d %s", 
+                    Z_OBJCE_P(EG(exception))->name,
+                    file ? Z_STRVAL_P(file) : NULL,
+                    line ? (int)Z_LVAL_P(line) : 0,
+                    error ? Z_STRVAL_P(error) : ""
+            );
+        }
+        zend_clear_exception(TSRMLS_C);
+    }
+    
+    if (r->status != PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENT) {
+        // send response
+        evhttp_send_reply(r->req, r->response_status, NULL, buffer);
+    }
+    
+    evbuffer_free(buffer);
 
     struct php_buddel_server_logentry *logentry;
     LOGENTRY_CTOR(logentry, r);
 
     zval_ptr_dtor(&request);
-
-    if(EG(exception)) {
-        zval *file = NULL, *line = NULL;
-        file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
-        line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
-        zend_error(E_USER_ERROR, "Uncaught exception '%s' within request handler thrown in %s on line %d",
-            Z_OBJCE_P(EG(exception))->name,
-            file ? Z_STRVAL_P(file) : NULL,
-            line ? (int)Z_LVAL_P(line) : 0
-        );
-        zend_clear_exception(TSRMLS_C);
-    }
 
     if (s->logformat_len) {
         LOGENTRY_LOG(logentry, s, request_counter);

@@ -6,7 +6,7 @@ Hax: A collection of the useful tools and classes within one PHP extension
 
 
 Buddel is a fast and simple web framework for writing a lightweight stateless or stateful PHP HTTP services based on libevent (http://libevent.org).
-This project is inspired by Bottle: Python Web Framework (http://bottlepy.org)
+This project is inspired by Bottle (Python Web Framework: http://bottlepy.org)
 
 
 Installation
@@ -43,6 +43,8 @@ Mandatory Hello World example:
 
 Execute this script with your PHP cli binary (requires PHP 5.4+) and point your browser to http://localhost:4567/hello/world
 
+The most parts of the following documentation is based on BottlePy documentation adapted for Buddle PHP extension.
+
 Request routing
 ===============
 
@@ -50,7 +52,7 @@ The Router distinguishes between two basic types of routes: static routes (e.g. 
 A route that contains one or more wildcards it is considered dynamic. All other routes are static.
 The simplest form of a wildcard consists of an identifier enclosed in angle brackets (e.g. <name>). The identifier should be unique for a given route.
 Each wildcard matches one or more characters, but stops at the first slash (/). This equals a regular expression of [^/]+ and ensures 
-that only one path segment is matched and routes with more than one value holder stay unambiguous. 
+that only one path segment is matched and routes with more than one wildcard stay unambiguous. 
 
 Dynamic Routes
 ==============
@@ -64,8 +66,8 @@ implement RESTful, nice-looking and meaningful URLs with ease. Here are some oth
     <?php
 
     $router = new Router(
-        new Route('/wiki/<pagename>', 'getWiki'),        // matches /wiki/imprint
-        new Route('/<action>/<user>', 'User::doAction'), // matches /follow/123
+        new Route('/wiki/<pagename>', 'getWiki'),           // matches /wiki/imprint
+        new Route('/<action>/<user>', 'User::doAction'),    // matches /follow/123
     );
 
     ?>
@@ -75,7 +77,7 @@ HTTP Request Methods
 
 The HTTP protocol defines several request methods for different tasks. GET is the default for all routes 
 with no other method specified. These routes will match GET requests only. To handle other methods such as POST, PUT or DELETE, 
-add an appropriate class constant as 3. argument to the Route constructor. You can use bitwise operators to combine multiple methods
+add an appropriate class constant as 3. parameter to the Route constructor. You can use bitwise operators to combine multiple methods
 for the same route.
 
     <?php

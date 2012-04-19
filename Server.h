@@ -110,6 +110,7 @@ struct php_buddel_server_logentry {
     long   remote_port;
     long   response_status;
     size_t mem_usage;
+    char * error;
 };
 
 #define SETNOW(double_now) \
@@ -137,7 +138,8 @@ struct php_buddel_server_logentry {
     logentry->remote_host = request->req->remote_host; \
     logentry->remote_port = request->req->remote_port; \
     logentry->response_status = request->response_status; \
-    logentry->mem_usage = 0;
+    logentry->mem_usage = 0; \
+    logentry->error = estrdup(request->error ? request->error : "-");
 
 #define LOGENTRY_LOG(logentry, server, count) \
     double now; SETNOW(now); \
@@ -176,6 +178,8 @@ struct php_buddel_server_logentry {
         if (logentry->response_len > 0) add_assoc_long(map, "bytes", logentry->response_len); \
         else add_assoc_stringl(map, "bytes", "-", 1, 1); \
     } \
+    if (php_buddel_strpos(server->logformat, "x-error", 0) != FAILURE) \
+        add_assoc_string(map, "x-error", logentry->error, 1); \
     zval *msg = php_buddel_strtr_array(server->logformat, server->logformat_len, Z_ARRVAL_P(map)); \
     WRITELOG(server, Z_STRVAL_P(msg), Z_STRLEN_P(msg)); \
     zval_ptr_dtor(&msg); \
@@ -184,7 +188,8 @@ struct php_buddel_server_logentry {
 #define LOGENTRY_DTOR(logentry) \
     efree(logentry->uri); \
     efree(logentry->query); \
-    efree(logentry);
+    efree(logentry->error); \
+    efree(logentry); 
 
 PHP_MINIT_FUNCTION(buddel_server);
 PHP_MSHUTDOWN_FUNCTION(buddel_server);

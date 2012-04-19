@@ -31,9 +31,7 @@ extern zend_class_entry *ce_buddel_Exception,
     *ce_buddel_InvalidParametersException,
     *ce_buddel_InvalidCallbackException,
     *ce_buddel_InvalidOperationException,
-    *ce_buddel_UnknownActionException,
-    *ce_buddel_InvalidActionParameterException,
-    *ce_buddel_RequiredActionParameterException;
+    *ce_buddel_HTTPError;
 
 int php_buddel_throw_exception(zend_class_entry *ce TSRMLS_DC, char *format, ...);
 

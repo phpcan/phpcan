@@ -167,7 +167,7 @@ look_for_quote:
     return res;
 }
 
-static const char* memmem( const char * s1, size_t l1, const char * s2, size_t l2 )
+static const char* my_memmem( const char * s1, size_t l1, const char * s2, size_t l2 )
 {
     if( !l2 ) return s1;
     while( l1 >= l2 )
@@ -244,7 +244,7 @@ void  php_buddel_parse_multipart(const char* content_type, struct evbuffer* buff
     spprintf(&boundary_val, 0, "--%s", boundary);
     boundary_val_len = strlen(boundary_val);
 
-    const char * delim = memmem(in, inlen, (const char *) boundary_val, boundary_val_len );
+    const char * delim = my_memmem(in, inlen, (const char *) boundary_val, boundary_val_len );
 
     MAKE_STD_ZVAL(*files);
     array_init(*files);
@@ -256,7 +256,7 @@ void  php_buddel_parse_multipart(const char* content_type, struct evbuffer* buff
         inlen -= ( part - in );
         in = part;
 
-        delim = memmem(in, inlen, (const char *) boundary_val, boundary_val_len );
+        delim = my_memmem(in, inlen, (const char *) boundary_val, boundary_val_len );
         part_len = delim ? (size_t)( delim - part ) : inlen;
 
         if( part_len ) {

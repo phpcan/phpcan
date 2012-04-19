@@ -94,7 +94,7 @@ static PHP_METHOD(BuddelServerRoute, __construct)
     zend_bool is_callable = zend_is_callable(handler, 0, &func_name TSRMLS_CC);
     if (!is_callable) {
         php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+            ce_buddel_InvalidCallbackException TSRMLS_CC,
             "Handler '%s' is not a valid callback",
             func_name
         );
@@ -150,7 +150,7 @@ static PHP_METHOD(BuddelServerRoute, __construct)
  */
 static PHP_METHOD(BuddelServerRoute, getRoute)
 {
-    zend_bool as_regexp = false;
+    zend_bool as_regexp = 0;
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "|b", &as_regexp)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
@@ -174,7 +174,7 @@ static PHP_METHOD(BuddelServerRoute, getRoute)
  */
 static PHP_METHOD(BuddelServerRoute, getMethod)
 {
-    zend_bool as_regexp = false;
+    zend_bool as_regexp = 0;
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "|b", &as_regexp)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);

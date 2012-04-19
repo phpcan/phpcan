@@ -23,6 +23,8 @@
 #include "zend_interfaces.h"
 
 extern zend_module_entry buddel_module_entry;
+#define buddel_module_ptr &buddel_module_entry 
+#define phpext_buddel_ptr buddel_module_ptr
 
 #define PHP_BUDDEL_VERSION "0.1.0"
 

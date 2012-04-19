@@ -1,11 +1,11 @@
 dnl  Copyright (c) 2002-2011, Dmitri Vinogradov <dmitri.vinogradov@gmail.com>.
 dnl  All rights reserved.
 
-PHP_ARG_ENABLE(Buddel, whether to enable Macrosite support,
-[  --enable-Buddel      Enable Buddel support])
+PHP_ARG_ENABLE(buddel, whether to enable Buddel support,
+[  --enable-buddel           Enable Buddel support])
 
 PHP_ARG_WITH(libevent, libevent install prefix,
-[  --with-libevent=DIR     Buddel: libevent install prefix])
+[  --with-libevent=DIR     libevent install prefix])
 
 if test "$PHP_BUDDEL" != "no"; then
   SEARCH_PATH="/usr /usr/local"
@@ -50,9 +50,9 @@ if test "$PHP_BUDDEL" != "no"; then
     -L$LIBEVENT_DIR/$PHP_LIBDIR
   ])
 
-  PHP_ADD_EXTENSION_DEP(Buddel, sockets, true)
+  PHP_ADD_EXTENSION_DEP(buddel, sockets, true)
   PHP_SUBST(BUDDEL_SHARED_LIBADD)
-  PHP_NEW_EXTENSION(Buddel, \
+  PHP_NEW_EXTENSION(buddel, \
     Buddel.c \
     Exception.c \
     Server.c \

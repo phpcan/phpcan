@@ -199,8 +199,7 @@ static PHP_METHOD(BuddelServerRouting, __construct)
         if (Z_TYPE_PP(zroute) != IS_OBJECT || Z_OBJCE_PP(zroute) != ce_buddel_server_route) {
             php_buddel_throw_exception(
                 ce_buddel_InvalidParametersException TSRMLS_CC,
-                "Route must be instance of '%s', '%s' given", 
-                    ce_buddel_server_route->name, Z_OBJCE_PP(zroute)->name
+                "Route must be instance of '%s'", ce_buddel_server_route->name
             );
             return;
         }
