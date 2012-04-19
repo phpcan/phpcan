@@ -1,8 +1,8 @@
-==========================================================================
-Hax: A collection of the useful tools and classes within one PHP extension
-==========================================================================
+=====================
+Buddel: Web framework
+=====================
 
-| Copyright: (c) 2012 Dmitry Vinogradov
+Copyright: (c) 2012 Dmitry Vinogradov
 
 
 Buddel is a fast and simple web framework for writing a lightweight stateless or stateful PHP HTTP services based on libevent (http://libevent.org).
@@ -107,3 +107,6 @@ for the same route.
     );
 
     ?>
+
+To be continued...
+==================
