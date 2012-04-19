@@ -12,9 +12,9 @@ This project is inspired by Bottle (Python Web Framework: http://bottlepy.org)
 Installation
 ============
 
-./configure --with-libevent=LIBEVENT-PATH --with-php-config=PHP_CONFIG_PATH
-make
-make install
+    ./configure --with-libevent=LIBEVENT-PATH --with-php-config=PHP_CONFIG_PATH
+    make
+    make install
 
 Add "extension=buddel.so" to your php.ini file to load Buddle classes.
 
