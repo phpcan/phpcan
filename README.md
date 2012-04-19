@@ -12,7 +12,7 @@ This project is inspired by Bottle (Python Web Framework: http://bottlepy.org)
 Installation
 ============
 
-./configure --with-libevent=<LIBEVENT-PATH> --with-php-config=<PHP_CONFIG_PATH>
+./configure --with-libevent=LIBEVENT-PATH --with-php-config=<PHP_CONFIG_PATH>
 make
 make install
 
