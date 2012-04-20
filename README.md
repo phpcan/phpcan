@@ -16,7 +16,7 @@ Installation
     make
     make install
 
-Add "extension=buddel.so" to your php.ini file to load Buddle classes.
+Add "extension=buddel.so" to your php.ini file to load Buddel classes.
 
 Mandatory Hello World example:
 
@@ -29,13 +29,13 @@ Mandatory Hello World example:
 
     $server = new Server('127.0.0.1', 4567);
 
-    $router = new Router(
+    $router = new Router([
         new Route('/hello/world', 
             function(Request $request) 
                 return 'Hello, World';
             }
         )
-    );
+    ]);
 
     $server->start($router);
 
@@ -43,7 +43,7 @@ Mandatory Hello World example:
 
 Execute this script with your PHP cli binary (requires PHP 5.4+) and point your browser to http://localhost:4567/hello/world
 
-The most parts of the following documentation is based on BottlePy documentation adapted for Buddle PHP extension.
+The most parts of the following documentation is based on BottlePy documentation adapted for Buddel PHP extension.
 
 Request routing
 ===============
@@ -60,15 +60,18 @@ Dynamic Routes
 Routes that contain wildcards are called dynamic routes (as opposed to static routes) and match more than one URL at the same time. 
 For example, the route ``/hello/<name>`` accepts requests for ``/hello/alice`` as well as ``/hello/bob``, but not for ``/hello``, ``/hello/`` or ``/hello/mr/smith``.
 
+It is possible to specify a custom regular expression for the field. The matched value is not modified.
+
 Each wildcard passes the covered part of the URL as a keyword argument to the request callback. You can use them right away and 
 implement RESTful, nice-looking and meaningful URLs with ease. Here are some other examples along with the URLs they’d match:
 
     <?php
 
-    $router = new Router(
+    $router = new Router([
         new Route('/wiki/<pagename>', 'getWiki'),           // matches /wiki/imprint
-        new Route('/<action>/<user>', 'User::doAction'),    // matches /follow/123
-    );
+        new Route('/<action>/<user>', 'User::doAction'),    // matches /follow/foobar
+        new Route('/user/<id:[0-9]+>', 'User::get'),        // matches /user/123
+    ]);
 
     ?>
 
@@ -82,29 +85,26 @@ for the same route.
 
     <?php
 
-    $router = new Router(
-        array(
-            new Route('/login', 
-                function(Request $request) {
-                    return '<form method="POST">
-                            <input name="name" type="text" />
-                            <input name="pass" type="password" />
-                            <input name="submit" type="submit" />
-                            </form>';
-                },
-                Route::METHOD_GET
-            ),
-            new Route('/login', 
-                function(Request $request) {
-                    if (login($request->post['name'], $request->post['pass'])) {
-                        return '<h2>You\'re ligged in!</h2>';
-                    }
-                    return '<h2>Login failed</h2>';
-                }, 
-                Route::METHOD_POST
-            )
+    $router = new Router([
+        new Route('/login', 
+            function(Request $request) {
+                return '<form method="POST">
+                        Username: <input name="name" type="text" /><br />
+                        Password: <input name="pass" type="password" /></br />
+                        <input name="submit" type="submit" value="Log in" />
+                        </form>';
+            }
+        ),
+        new Route('/login', 
+            function(Request $request) {
+                if (login($request->post['name'], $request->post['pass'])) {
+                    return '<h2>You\'re ligged in!</h2>';
+                }
+                return '<h2>Login failed</h2>';
+            }, 
+            Route::METHOD_POST
         )
-    );
+    ]);
 
     ?>
 
