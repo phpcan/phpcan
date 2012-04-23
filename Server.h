@@ -23,6 +23,7 @@
 #include "fopen_wrappers.h"
 #include "ext/date/php_date.h"
 #include "ext/standard/php_array.h"
+#include "ext/standard/php_string.h"
 #include "ext/standard/url.h"
 #include "ext/pcre/php_pcre.h"
 #include "php_variables.h"
@@ -46,6 +47,10 @@
 #define PHP_BUDDEL_SERVER_ROUTE_METHOD_CONNECT   128
 #define PHP_BUDDEL_SERVER_ROUTE_METHOD_PATCH     256
 #define PHP_BUDDEL_SERVER_ROUTE_METHOD_ALL       511
+
+#ifndef IS_PATH
+#define IS_PATH 99
+#endif
 
 extern zend_class_entry *ce_buddel_server;
 extern zend_class_entry *ce_buddel_server_request;
@@ -90,6 +95,7 @@ struct php_buddel_server_route {
     char *regexp;
     zval *handler;
     int  methods;
+    zval *casts;
 };
 
 struct php_buddel_server_router {

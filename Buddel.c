@@ -301,7 +301,6 @@ static zend_function_entry buddel_functions[] = {
 
 static zend_module_dep buddel_deps[] = {
     ZEND_MOD_REQUIRED("pcre")
-    ZEND_MOD_REQUIRED("fileinfo")
     {NULL, NULL, NULL}
 };
 

@@ -123,6 +123,37 @@ static char * typeToMethod(int type)
     }
 }
 
+/**
+ * Remove null byte from any string value
+ */
+static int cleanUp(zval **item TSRMLS_DC)
+{
+    /* TODO: do we need it in PHP 5.4+ ?
+    if (Z_TYPE_PP(item) == IS_STRING) {
+        char *str = estrndup(Z_STRVAL_PP(item), Z_STRLEN_PP(item));
+        int str_len = Z_STRLEN_PP(item);
+        php_stripslashes(str, &str_len TSRMLS_CC);
+        efree(Z_STRVAL_PP(item));
+        Z_STRVAL_PP(item) = estrndup(str, str_len);
+        Z_STRLEN_PP(item) = str_len;
+        efree(str);
+    }
+    */
+    if (Z_TYPE_PP(item) == IS_STRING) {
+        int new_value_len, count = 0;
+        char *new_value = php_str_to_str_ex(Z_STRVAL_PP(item), Z_STRLEN_PP(item), 
+                "\0", 1, "", 0, &new_value_len, 0, &count);
+        if (count > 0) {
+            efree(Z_STRVAL_PP(item));
+            Z_STRVAL_PP(item) = estrndup(new_value, new_value_len);
+            Z_STRLEN_PP(item) = new_value_len;
+        }
+        efree(new_value);
+    }
+
+    return ZEND_HASH_APPLY_KEEP;
+}
+
 static void parse_cookies(const char *cookie, zval **array_ptr TSRMLS_DC)
 {
     char *str, *var, *val, *strtok_buf = NULL;
@@ -185,7 +216,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
     long content_len = 0, buffer_len = 0;
     zval retval, *params;
     struct timeval tp = {0};
-    ulong routeIndex = -1;
+    long routeIndex = -1;
     
     struct evbuffer *buffer = evbuffer_new();
     
@@ -219,8 +250,10 @@ static void request_handler(struct evhttp_request *req, void *arg)
         if (FAILURE != zend_hash_find(Z_ARRVAL_P(router->methods), method, strlen(method) + 1, (void **)&tmp)) {
             zval **item;
             if (FAILURE != zend_hash_find(Z_ARRVAL_PP(tmp), uri_path, strlen(uri_path) + 1, (void **)&item)) {
+                // static route
                 routeIndex = Z_LVAL_PP(item);
             } else {
+                // dynamic routes
                 PHP_BUDDEL_FOREACH(*tmp, item) {
                     if (strkey[0] == '\1') {
                         pcre_cache_entry *pce;
@@ -235,13 +268,15 @@ static void request_handler(struct evhttp_request *req, void *arg)
                                 zval **match;
                                 PHP_BUDDEL_FOREACH(subpats, match) {
                                     if (keytype == HASH_KEY_IS_STRING) {
-                                        add_assoc_stringl(params, strkey, Z_STRVAL_PP(match), Z_STRLEN_PP(match), 1);
+                                        char * param = estrndup(Z_STRVAL_PP(match), Z_STRLEN_PP(match));
+                                        int param_len = php_url_decode(param, Z_STRLEN_PP(match));
+                                        add_assoc_stringl(params, strkey, param, param_len, 0);
                                     }
                                 }
                             }
                             zval_ptr_dtor(&subpats);
                             zval_ptr_dtor(&res);
-                            if (routeIndex > -1) {
+                            if (routeIndex >= 0) {
                                 break;
                             }
                         }
@@ -260,6 +295,26 @@ static void request_handler(struct evhttp_request *req, void *arg)
 
             // set route
             route = (struct php_buddel_server_route *)zend_object_store_get_object(*zroute TSRMLS_CC);
+            
+            // check if we must cast params
+            if (zend_hash_num_elements(Z_ARRVAL_P(route->casts))) {
+                zval **item, **param;
+                PHP_BUDDEL_FOREACH(route->casts, item) {
+                    if (FAILURE != zend_hash_find(Z_ARRVAL_P(params), strkey, strlen(strkey) + 1, (void **)&param)) {
+                        if (Z_LVAL_PP(item) == IS_LONG) {
+                            convert_to_long_ex(param);
+                        } else if (Z_LVAL_PP(item) == IS_DOUBLE) {
+                            convert_to_double_ex(param);
+                        } else if (Z_LVAL_PP(item) == IS_PATH) {
+                            if (CHECK_ZVAL_NULL_PATH(*param)) {
+                                r->response_status = 400;
+                                spprintf(&r->error, 0, "Detected invalid characters in the URI.");
+                                break;
+                            }
+                        }
+                    }
+                }    
+            }
 
             // parse cookies
             cookie = evhttp_find_header(r->req->input_headers, "Cookie");
@@ -267,6 +322,8 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 MAKE_STD_ZVAL(r->cookies);
                 array_init(r->cookies);
                 parse_cookies(cookie, &r->cookies TSRMLS_CC);
+                // remove null bytes from cookies
+                zend_hash_apply(Z_ARRVAL_P(r->cookies), (apply_func_t) cleanUp TSRMLS_CC);
             }
 
             // set query and parse GET parameters
@@ -278,6 +335,8 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 array_init(r->get);
                 char *q = estrdup(query); // will be freed within php_default_treat_data()
                 php_default_treat_data(PARSE_STRING, q, r->get TSRMLS_CC);
+                // remove null bytes from get params
+                zend_hash_apply(Z_ARRVAL_P(r->get), (apply_func_t) cleanUp TSRMLS_CC);
             }
 
             // parse POST parameters
@@ -306,6 +365,8 @@ static void request_handler(struct evhttp_request *req, void *arg)
                                 r->post TSRMLS_CC
                             );
                         }
+                        // remove null bytes from post params
+                        zend_hash_apply(Z_ARRVAL_P(r->post), (apply_func_t) cleanUp TSRMLS_CC);
                     }
                 }
             }

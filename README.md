@@ -60,7 +60,16 @@ Dynamic Routes
 Routes that contain wildcards are called dynamic routes (as opposed to static routes) and match more than one URL at the same time. 
 For example, the route ``/hello/<name>`` accepts requests for ``/hello/alice`` as well as ``/hello/bob``, but not for ``/hello``, ``/hello/`` or ``/hello/mr/smith``.
 
-It is possible to specify a custom regular expression for the field. The matched value is not modified.
+Filters are used to define more specific wildcards, and/or transform the covered part of the URL before it is passed to the callback. 
+A filtered wildcard is declared as ``<name:filter>`` or ``<name:filter:config>``. The syntax for the optional config part depends 
+on the filter used.
+
+The following filters are implemented by default and more may be added:
+
+* **:int** matches (signed) digits only and converts the value to integer.
+* **:float** similar to :int but for decimal numbers.
+* **:path** matches all characters including the slash character in a non-greedy way and can be used to match more than one path segment.
+* **:re** allows you to specify a custom regular expression in the config field. The matched value is not modified.
 
 Each wildcard passes the covered part of the URL as a keyword argument to the request callback. You can use them right away and 
 implement RESTful, nice-looking and meaningful URLs with ease. Here are some other examples along with the URLs they’d match:
@@ -70,7 +79,7 @@ implement RESTful, nice-looking and meaningful URLs with ease. Here are some oth
     $router = new Router([
         new Route('/wiki/<pagename>', 'getWiki'),           // matches /wiki/imprint
         new Route('/<action>/<user>', 'User::doAction'),    // matches /follow/foobar
-        new Route('/user/<id:[0-9]+>', 'User::get'),        // matches /user/123
+        new Route('/user/<id:int>',   'User::get'),         // matches /user/123
     ]);
 
     ?>

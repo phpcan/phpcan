@@ -34,6 +34,7 @@ static zend_object_value server_route_ctor(zend_class_entry *ce TSRMLS_DC)
     r->methods = 0;
     r->regexp = NULL;
     r->route = NULL;
+    r->casts = NULL;
     retval.handle = zend_objects_store_put(r,
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_route_dtor,
@@ -58,6 +59,10 @@ static void server_route_dtor(void *object TSRMLS_DC)
     if (r->route) {
         efree(r->route);
         r->route = NULL;
+    }
+    
+    if (r->casts) {
+        zval_ptr_dtor(&r->casts);
     }
 
     zend_objects_store_del_ref(&r->refhandle TSRMLS_CC);
@@ -106,6 +111,9 @@ static PHP_METHOD(BuddelServerRoute, __construct)
     zval_add_ref(&handler);
     r->handler = handler;
     
+    MAKE_STD_ZVAL(r->casts);
+    array_init(r->casts);
+    
     if (FAILURE != php_buddel_strpos(route, "<", 0) && FAILURE != php_buddel_strpos(route, ">", 0)) {
         int i;
         for (i = 0; i < route_len; i++) {
@@ -117,10 +125,24 @@ static PHP_METHOD(BuddelServerRoute, __construct)
                 int pos = php_buddel_strpos(name, ":", 0);
                 if (FAILURE != pos) {
                     char *var = php_buddel_substr(name, 0, pos);
-                    char *reg = php_buddel_substr(name, pos + 1, strlen(name) - (pos + 1));
-                    spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, reg);
+                    char *filter = php_buddel_substr(name, pos + 1, strlen(name) - (pos + 1));
+                    if (strcmp(filter, "int") == 0) {
+                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, "-?[0-9]+");
+                        add_assoc_long(r->casts, var, IS_LONG);
+                    } else if (0 == strcmp(filter, "float")) {
+                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, "-?[0-9.]+");
+                        add_assoc_long(r->casts, var, IS_DOUBLE);
+                    } else if (0 == strcmp(filter, "path")) {
+                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, ".+?");
+                        add_assoc_long(r->casts, var, IS_PATH);
+                    } else if (0 == (pos = php_buddel_strpos(filter, "re:", 0))) {
+                        char *reg = php_buddel_substr(filter, pos + 3, strlen(filter) - (pos + 3));
+                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, reg);
+                        efree(reg);
+                    }
+                    efree(filter);
                     efree(var);
-                    efree(reg);
+                    
                 } else {
                     spprintf(&r->regexp, 0, "%s(?<%s>[^/]+)", r->regexp, name);
                 }

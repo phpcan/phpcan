@@ -208,12 +208,12 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
 
         MAKE_STD_ZVAL(retval);
         array_init(retval);
-        /*
-        TAILQ_FOREACH( header, r->req->input_headers, next)
-        {
+        for (header = ((r->req->input_headers)->tqh_first);
+             header; 
+             header = ((header)->next.tqe_next)
+        ) {
             add_assoc_string(retval, header->key, header->value, 1);
         }
-        */
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else if (Z_STRLEN_P(member) == (sizeof("cookies") - 1)
@@ -340,12 +340,12 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
 
     MAKE_STD_ZVAL(zv);
     array_init(zv);
-    /*
-    TAILQ_FOREACH (header, r->req->input_headers, next)
-    {
+    for (header = ((r->req->input_headers)->tqh_first);
+         header; 
+         header = ((header)->next.tqe_next)
+    ) {
         add_assoc_string(zv, header->key, header->value, 1);
     }
-    */
     zend_hash_update(props, "headers", sizeof("headers"), &zv, sizeof(zval), NULL);
 
     MAKE_STD_ZVAL(zv);
@@ -730,19 +730,21 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
     char *filename, *root, *mimetype;
     int filename_len, root_len = 0, *mimetype_len = 0;
     zval *download = NULL;
+    long chunksize = 8192; // default chunksize 8 kB
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "p|psz", &filename, &filename_len, &root, &root_len, 
-                     &mimetype, &mimetype_len, &download)) {
+            "p|pszl", &filename, &filename_len, &root, &root_len, 
+                     &mimetype, &mimetype_len, &download, &chunksize)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_buddel_throw_exception(
             ce_buddel_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(string $filename[, string $root[, string $mimetype[, string $download]]])",
+            "%s%s%s(string $filename[, string $root[, string $mimetype[, string $download[, int $chunksize=10240]]]])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
     
+    // try to determine real path of the given root
     char *path = NULL;
     if (root_len > 0) {
         path = get_realpath(root TSRMLS_CC);
@@ -750,7 +752,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
             const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
             php_buddel_throw_exception(
                 ce_buddel_InvalidParametersException TSRMLS_CC,
-                "%s%s%s(): Cannot determine real path of '%s'",
+                "%s%s%s(): Cannot determine real path of $root value '%s'",
                 class_name, space, get_active_function_name(TSRMLS_C),
                 root
             );
@@ -758,6 +760,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
         }
     }
     
+    // try to determine real path of the root+file
     char *filepath = NULL;
     spprintf(&filepath, 0, "%s%s%s", path ? path : "", (path && filename[0] != '/' ? "/" : ""), filename);
     if (path != NULL) {
@@ -779,9 +782,9 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
     struct php_buddel_server_request *r = (struct php_buddel_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
+    // handle $mimetype
     if (mimetype_len == 0) {
-        
-        // try to determine mimetype with finfo
+        // $mimtype was not given, so try to determine mimetype with finfo
         zend_class_entry **cep;
         if (zend_lookup_class_ex("\\finfo", sizeof("\\finfo") - 1, NULL, 0, &cep TSRMLS_CC) == SUCCESS) {
 
@@ -790,7 +793,6 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
             zend_fcall_info_cache fcc;
             zend_class_entry *ce = *cep;
             
-            // create finfo object
             ALLOC_INIT_ZVAL(object);
             object_init_ex(object, ce);
 
@@ -814,6 +816,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
             fcc.called_scope = Z_OBJCE_P(object);
             fcc.object_ptr = object;
 
+            // call constructor
             int result = zend_call_function(&fci, &fcc TSRMLS_CC);
             zval_ptr_dtor(&arg);
             if (retval_ptr) {
@@ -852,20 +855,24 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
             zval_ptr_dtor(&object);
             
         } else {
+            // finfo is not present, so just set to text/plain 
             evhttp_add_header(r->req->output_headers, "Content-Type", "text/plain");
         }
         
     } else {
+        // $mimetype was given
         evhttp_add_header(r->req->output_headers, "Content-Type", mimetype);
     }
     
-    // handle downloads
+    // handle $download
     if (download) { 
         char *basename = NULL;
         size_t basename_len;
         if (Z_TYPE_P(download) == IS_BOOL && Z_BVAL_P(download) == 1) { 
+            // $download is true, determine basename of the file
             php_basename(filepath, strlen(filepath), NULL, 0, &basename, &basename_len TSRMLS_CC);
         } else if (Z_TYPE_P(download) == IS_STRING) {
+            // $download is filename
             basename = estrndup(Z_STRVAL_P(download), Z_STRLEN_P(download));
         }
         if (basename) {
@@ -877,6 +884,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
     
     efree(filepath);
     
+    // open stream wrapper to the file
     php_stream *stream = php_stream_open_wrapper(path, "rb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
     if (!stream) {
         php_buddel_throw_exception(
@@ -889,7 +897,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
         return;
     }
     
-    // get file stat
+    // get file stats
     php_stream_statbuf st;
     if (php_stream_stat(stream, &st) < 0) {
         php_buddel_throw_exception(
@@ -905,7 +913,8 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
     // generate ETag
     char *etag = NULL;
     spprintf(&etag, 0, "%X-%X-%X", (int)st.sb.st_ino, (int)st.sb.st_mtime, (int)st.sb.st_size);
-    
+
+    // check if client gave us ETag in header
     const char *client_etag = evhttp_find_header(r->req->input_headers, "If-None-Match");
     if (client_etag != NULL && strcmp(client_etag, etag) == 0) {
         
@@ -915,6 +924,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
         
     } else {
         
+        // ETag is not the same or unknown, so check client's modification stamp
         const char *client_lm = evhttp_find_header(r->req->input_headers, "If-Modified-Since");
         int client_ts = 0;
         if (client_lm != NULL) {
@@ -935,13 +945,15 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
         
         if (client_ts >= st.sb.st_mtime) {
             
-            // not modified
+            // modification falg of the file is older than client's stamp
+            // so send "Not Modified" response
             r->response_status = 304;
             evhttp_send_reply(r->req, r->response_status, NULL, NULL);
 
         } else {
-            
-            // add ETag header
+
+            // we will send 2xx response (depending on rerquest method)
+            // so we add ETag header
             evhttp_add_header(r->req->output_headers, "ETag", etag);
 
             // generate and add Last-Modified header
@@ -967,50 +979,129 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
                 evhttp_add_header(r->req->output_headers, "Last-Modified", lm);
                 efree(lm);
             }
-
-            // TODO: Accept-Ranges implementation
-            //evhttp_add_header(r->req->output_headers, "Accept-Ranges", "bytes");
-            //const char *range = evhttp_find_header(r->req->input_headers, "Range");
             
-            if (st.sb.st_size < 524288) {
-                
-                // send as whole file
-                char *content;
-                int content_len = php_stream_copy_to_mem(stream, &content, st.sb.st_size, 0);
+            // add Accept-Ranges header to notify client that we can handle
+            // renged requests
+            evhttp_add_header(r->req->output_headers, "Accept-Ranges", "bytes");
+            
+            // if request method is HEAD, just add Content-Length header
+            // and send respinse without body
+            if (r->req->type == EVHTTP_REQ_HEAD) {
                 r->response_status = 200;
-                r->response_len = content_len;
-                struct evbuffer *buffer = evbuffer_new();
-                evbuffer_add(buffer, content, content_len);
-                evhttp_send_reply(r->req, 200, NULL, buffer);
-                evbuffer_free(buffer);
-                efree(content);
-                
+                char *size = NULL;
+                spprintf(&size, 0, "%ld", (long)st.sb.st_size);
+                evhttp_add_header(r->req->output_headers, "Content-Length", size);
+                evhttp_send_reply(r->req, r->response_status, NULL, NULL);
+                efree(size);
             } else {
-                
-                // send chunked
-                long pos = 0;
-                char *chunk;
-                while(-1 != php_stream_seek(stream, pos, SEEK_SET )) {
-                    if (pos == 0) {
-                        r->response_status = 200;
-                        evhttp_send_reply_start(r->req, r->response_status, NULL);
-                        r->status = PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENDING;
-                        r->response_len = 0;
+            
+                // check if the client requested the ranged content
+                long range_from = 0, range_to = st.sb.st_size, range_len;
+                char *range = (char *)evhttp_find_header(r->req->input_headers, "Range");
+                if (range != NULL) {
+                    int pos = php_buddel_strpos(range, "bytes=", 0);
+                    if (FAILURE != pos) {
+                        int part_len =  strlen(range) - 6;
+                        char * part = php_buddel_substr(range, 6, part_len);
+                        if (part != NULL) {
+                            char start[part_len], end[part_len];
+                            int is_end = 0, i, y = 0;
+                            for(i = 0; i < part_len; i++) {
+                                if (part[i] == '-') {
+                                    is_end = 1;
+                                    start[i] = '\0';
+                                    continue;
+                                }
+                                if (is_end) {
+                                    end[y++] = part[i];
+                                } else {
+                                    start[i] = part[i];
+                                }
+                            }
+                            end[y] = '\0';
+                            efree(part);
+
+                            if (strlen(start) == 0) {
+                                // bytes=-100 -> last 100 bytes
+                                range_from = MAX(0, st.sb.st_size - atol(end));
+                                range_to = st.sb.st_size;
+                            } else if (strlen(end) == 0) {
+                                // bytes=100- -> all but the first 99 bytes
+                                range_from = atol(start);
+                                range_to = st.sb.st_size;
+                            } else {
+                                // bytes=100-200 -> bytes 100-200 (inclusive)
+                                range_from = atol(start);
+                                range_to = MIN(atol(end) + 1, st.sb.st_size);
+                            }
+                        }
                     }
-                    int chunk_len = php_stream_copy_to_mem(stream, &chunk, 1024, 0);
-                    if (chunk_len == 0) {
-                        efree(chunk);
-                        break;
-                    }
-                    struct evbuffer *buffer = evbuffer_new();
-                    evbuffer_add(buffer, chunk, chunk_len);
-                    evhttp_send_reply_chunk(r->req, buffer);
-                    evbuffer_free(buffer);
-                    efree(chunk);
-                    r->response_len += chunk_len;
-                    pos += chunk_len;
                 }
-                evhttp_send_reply_end(r->req);
+
+                range_len = range_to - range_from;
+                if (range_len <= 0) {
+
+                    // requested range is not valid, so send appropriate
+                    // response "Requested Range not satisfiable"
+                    r->response_status = 416;
+                    evhttp_send_reply(r->req, r->response_status, NULL, NULL);
+
+                } else {
+
+                    // set response code to 206 if partial content requested, to 200 otherwise
+                    r->response_status = range_len != st.sb.st_size ? 206 : 200;
+                    
+                    // if requested range is smaller then chunksize,
+                    // do not use chunked transfer encoding
+                    if (chunksize == 0 || range_len <= chunksize) {
+
+                        char *content;
+                        php_stream_seek(stream, range_from, SEEK_SET );
+                        int content_len = php_stream_copy_to_mem(stream, &content, range_len, 0);
+                        if (r->response_status == 206) {
+                            char *range = NULL;
+                            spprintf(&range, 0, "bytes %ld-%ld/%ld", range_from, range_to, (long)st.sb.st_size);
+                            evhttp_add_header(r->req->output_headers, "Content-Range", range);
+                            efree(range);
+                        }
+                        r->response_len = content_len;
+                        struct evbuffer *buffer = evbuffer_new();
+                        evbuffer_add(buffer, content, content_len);
+                        evhttp_send_reply(r->req, 200, NULL, buffer);
+                        evbuffer_free(buffer);
+                        efree(content);
+
+                    } else {
+
+                        // send contentas chunkd transfer encoding
+                        long pos = range_from, len;
+                        char *chunk;
+                        while(-1 != php_stream_seek(stream, pos, SEEK_SET )) {
+                            if (pos == range_from) {
+                                r->status = PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENDING;
+                                r->response_len = 0;
+                                evhttp_send_reply_start(r->req, r->response_status, NULL);
+                            }
+                            int len = (r->response_len + chunksize) > range_len ? (range_len - r->response_len) : chunksize;
+                            int chunk_len = php_stream_copy_to_mem(stream, &chunk, len, 0);
+                            if (chunk_len == 0) {
+                                efree(chunk);
+                                break;
+                            }
+                            struct evbuffer *buffer = evbuffer_new();
+                            evbuffer_add(buffer, chunk, chunk_len);
+                            evhttp_send_reply_chunk(r->req, buffer);
+                            evbuffer_free(buffer);
+                            efree(chunk);
+                            r->response_len += chunk_len;
+                            pos += chunk_len;
+                            if (r->response_len == range_len) {
+                                break;
+                            }
+                        }
+                        evhttp_send_reply_end(r->req);
+                    }
+                }
             }
         }
     }
