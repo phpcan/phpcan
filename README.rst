@@ -11,8 +11,10 @@ Tutorial
 
 .. _installation:
 
-Installation::
+Installation
 ------------
+
+.. code-block:: bash
 
     $ ./configure --with-libevent=/path/to/libevent --with-php-config=/path/to/php-config
     $ make
@@ -23,7 +25,9 @@ Add "extension=can.so" to your php.ini file to load Can extension.
 
 .. _tutorial-quickstart:
 
-Mandatory Hello World example::
+Mandatory Hello World example:
+
+.. code-block:: php
 
     <?php
 
@@ -51,7 +55,7 @@ add this route to the ``\Can\Server\Router`` instance and start the server with 
 Whenever a browser requests an URL, the associated handler is called and the return value is sent back to the browser. Its as simple as that.
 
 The ``\Can\Server`` instance is instantiated with IP address and port number as parameters, and ``\Can\Server::start()`` starts the server. 
-It runs on `localhost` port 4567 and serves requests until you hit :kbd:`Control-c`. 
+It runs on `localhost` port 4567 and serves requests until you hit ``Control-c``. 
 
 Of course this is a very simple example, but it shows the basic concept of how HTTP services are built with Can. Continue reading and you'll see what else is possible.
 
@@ -86,7 +90,9 @@ The following filters are implemented by default and more may be added:
 * **:re** allows you to specify a custom regular expression in the config field. The matched value is not modified.
 
 All wildcards passes the covered parts of the URL as associative array as second argument to the request callback. You can use them 
-right away and implement RESTful, nice-looking and meaningful URLs with ease. Here are some other examples along with the URLs they'd match::
+right away and implement RESTful, nice-looking and meaningful URLs with ease. Here are some other examples along with the URLs they'd match:
+
+.. code-block:: php
 
     <?php
     
@@ -113,7 +119,9 @@ HTTP Request Methods
 The HTTP protocol defines several request methods for different tasks. GET is the default for all routes 
 with no other method specified. These routes will match GET requests only. To handle other methods such as POST, PUT or DELETE, 
 add an appropriate class constant as 3. parameter to the Route constructor. You can use bitwise operators to combine multiple methods
-for the same route::
+for the same route.
+
+.. code-block:: php
 
     <?php
 
@@ -148,7 +156,9 @@ Routing Static Files
 --------------------
 
 Static files such as images or CSS files are not served automatically. You have to add a route and a callback to 
-control which files get served and where to find them::
+control which files get served and where to find them:
+
+.. code-block:: php
 
     <?php
 
@@ -163,7 +173,9 @@ control which files get served and where to find them::
     ?>
     
 This example is limited to files directly within the ``/path/to/your/static/files`` directory because the ``<filename>`` 
-wildcard won't match a path with a slash in it. To serve files in subdirectories, change the wildcard to use the `path` filter::
+wildcard won't match a path with a slash in it. To serve files in subdirectories, change the wildcard to use the `path` filter:
+
+.. code-block:: php
 
     <?php
 
@@ -181,7 +193,9 @@ The ``\Can\Server\Request::sendFile`` method is a helper to serve files in a saf
 It automatically guesses a mime-type, adds a ``Last-Modified``  header, generate and add ETag header, restricts paths 
 to a root directory for security reasons and generates appropriate error responses (401 on permission errors, 404 on missing files). 
 It supports the ``If-Modified-Since`` and ``If-None-Match`` headers and eventually generates a 304 Not Modified response. 
-You can pass a custom MIME type as 3. parameter to disable guessing::
+You can pass a custom MIME type as 3. parameter to disable guessing:
+
+.. code-block:: php
 
     <?php
 
@@ -200,7 +214,9 @@ Forced Download
 ---------------
 
 Most browsers try to open downloaded files if the MIME type is known and assigned to an application (e.g. PDF files). 
-If this is not what you want, you can force a download dialog by setting 4. parameter to true::
+If this is not what you want, you can force a download dialog by setting 4. parameter to true:
+
+.. code-block:: php
 
     <?php
 
