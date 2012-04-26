@@ -25,9 +25,7 @@ Add "extension=can.so" to your php.ini file to load Can extension.
 
 .. _tutorial-quickstart:
 
-Mandatory Hello World example:
-
-.. code-block:: php
+Mandatory Hello World example::
 
     <?php
 
@@ -90,9 +88,7 @@ The following filters are implemented by default and more may be added:
 * **:re** allows you to specify a custom regular expression in the config field. The matched value is not modified.
 
 All wildcards passes the covered parts of the URL as associative array as second argument to the request callback. You can use them 
-right away and implement RESTful, nice-looking and meaningful URLs with ease. Here are some other examples along with the URLs they'd match:
-
-.. code-block:: php
+right away and implement RESTful, nice-looking and meaningful URLs with ease. Here are some other examples along with the URLs they'd match::
 
     <?php
     
@@ -119,9 +115,7 @@ HTTP Request Methods
 The HTTP protocol defines several request methods for different tasks. GET is the default for all routes 
 with no other method specified. These routes will match GET requests only. To handle other methods such as POST, PUT or DELETE, 
 add an appropriate class constant as 3. parameter to the Route constructor. You can use bitwise operators to combine multiple methods
-for the same route.
-
-.. code-block:: php
+for the same route::
 
     <?php
 
@@ -156,9 +150,7 @@ Routing Static Files
 --------------------
 
 Static files such as images or CSS files are not served automatically. You have to add a route and a callback to 
-control which files get served and where to find them:
-
-.. code-block:: php
+control which files get served and where to find them::
 
     <?php
 
@@ -173,9 +165,7 @@ control which files get served and where to find them:
     ?>
     
 This example is limited to files directly within the ``/path/to/your/static/files`` directory because the ``<filename>`` 
-wildcard won't match a path with a slash in it. To serve files in subdirectories, change the wildcard to use the `path` filter:
-
-.. code-block:: php
+wildcard won't match a path with a slash in it. To serve files in subdirectories, change the wildcard to use the `path` filter::
 
     <?php
 
@@ -193,9 +183,7 @@ The ``\Can\Server\Request::sendFile`` method is a helper to serve files in a saf
 It automatically guesses a mime-type, adds a ``Last-Modified``  header, generate and add ETag header, restricts paths 
 to a root directory for security reasons and generates appropriate error responses (401 on permission errors, 404 on missing files). 
 It supports the ``If-Modified-Since`` and ``If-None-Match`` headers and eventually generates a 304 Not Modified response. 
-You can pass a custom MIME type as 3. parameter to disable guessing:
-
-.. code-block:: php
+You can pass a custom MIME type as 3. parameter to disable guessing::
 
     <?php
 
@@ -214,9 +202,7 @@ Forced Download
 ---------------
 
 Most browsers try to open downloaded files if the MIME type is known and assigned to an application (e.g. PDF files). 
-If this is not what you want, you can force a download dialog by setting 4. parameter to true:
-
-.. code-block:: php
+If this is not what you want, you can force a download dialog by setting 4. parameter to true::
 
     <?php
 
