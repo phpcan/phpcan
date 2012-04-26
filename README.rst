@@ -11,10 +11,8 @@ Tutorial
 
 .. _installation:
 
-Installation
+Installation::
 ------------
-
-.. code-block:: bash
 
     $ ./configure --with-libevent=/path/to/libevent --with-php-config=/path/to/php-config
     $ make
