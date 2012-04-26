@@ -17,23 +17,23 @@
 */
 
 #include "php.h"
-#include "php_buddel.h"
+#include "php_can.h"
 #include "Exception.h"
 
-zend_class_entry *ce_buddel_Exception;
-zend_class_entry *ce_buddel_RuntimeException;
-zend_class_entry *ce_buddel_ServerBindingException;
-zend_class_entry *ce_buddel_LogicException;
-zend_class_entry *ce_buddel_InvalidParametersException;
-zend_class_entry *ce_buddel_InvalidCallbackException;
-zend_class_entry *ce_buddel_InvalidOperationException;
-zend_class_entry *ce_buddel_HTTPError;
+zend_class_entry *ce_can_Exception;
+zend_class_entry *ce_can_RuntimeException;
+zend_class_entry *ce_can_ServerBindingException;
+zend_class_entry *ce_can_LogicException;
+zend_class_entry *ce_can_InvalidParametersException;
+zend_class_entry *ce_can_InvalidCallbackException;
+zend_class_entry *ce_can_InvalidOperationException;
+zend_class_entry *ce_can_HTTPError;
 
 /**
  * Throw an exception
  *
  */
-int php_buddel_throw_exception(zend_class_entry *ce TSRMLS_DC, char *format, ...)
+int php_can_throw_exception(zend_class_entry *ce TSRMLS_DC, char *format, ...)
 {
     va_list arg;
     char *message;
@@ -57,7 +57,7 @@ int php_buddel_throw_exception(zend_class_entry *ce TSRMLS_DC, char *format, ...
  * Throw an exception with code and message
  *
  */
-int php_buddel_throw_exception_code(zend_class_entry *ce TSRMLS_DC, long code, char *format, ...)
+int php_can_throw_exception_code(zend_class_entry *ce TSRMLS_DC, long code, char *format, ...)
 {
     va_list arg;
     char *message;
@@ -81,7 +81,7 @@ int php_buddel_throw_exception_code(zend_class_entry *ce TSRMLS_DC, long code, c
 /**
  * Constructor
  */
-static PHP_METHOD(BuddelHttpError, __construct)
+static PHP_METHOD(CanHttpError, __construct)
 {
     char *message;
     int message_len = 0;
@@ -90,8 +90,8 @@ static PHP_METHOD(BuddelHttpError, __construct)
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "l|s", &code, &message, &message_len)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(int $statuscode[, string $message])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
@@ -99,80 +99,80 @@ static PHP_METHOD(BuddelHttpError, __construct)
     }
     
     if (code < 400 || code > 599) {
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "Invalid HTTP error statuscode, expecting 400-599"
         );
         return;
     }
     
-    zend_update_property_long(ce_buddel_HTTPError, getThis(), "code", sizeof("code")-1, code TSRMLS_CC);
-    zend_update_property_string(ce_buddel_HTTPError, getThis(), "message", sizeof("message")-1, 
+    zend_update_property_long(ce_can_HTTPError, getThis(), "code", sizeof("code")-1, code TSRMLS_CC);
+    zend_update_property_string(ce_can_HTTPError, getThis(), "message", sizeof("message")-1, 
             message_len > 0 ? message : "" TSRMLS_CC);
 }
 
 static zend_function_entry http_error_methods[] = {
-    PHP_ME(BuddelHttpError, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanHttpError, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
-void buddel_exceptions_init(TSRMLS_D)
+void can_exceptions_init(TSRMLS_D)
 {
-    // class \Buddel\Exception
-    PHP_BUDDEL_REGISTER_SUBCLASS( &ce_buddel_Exception, zend_exception_get_default(TSRMLS_C),
-        ZEND_NS_NAME(PHP_BUDDEL_NS, "Exception"), NULL, NULL);
+    // class \Can\Exception
+    PHP_CAN_REGISTER_SUBCLASS( &ce_can_Exception, zend_exception_get_default(TSRMLS_C),
+        ZEND_NS_NAME(PHP_CAN_NS, "Exception"), NULL, NULL);
 
-        // class \Buddel\RuntimeException extends \Buddel\Exception
-        PHP_BUDDEL_REGISTER_SUBCLASS( &ce_buddel_RuntimeException, ce_buddel_Exception,
-            ZEND_NS_NAME(PHP_BUDDEL_NS, "RuntimeException"), NULL, NULL);
+        // class \Can\RuntimeException extends \Can\Exception
+        PHP_CAN_REGISTER_SUBCLASS( &ce_can_RuntimeException, ce_can_Exception,
+            ZEND_NS_NAME(PHP_CAN_NS, "RuntimeException"), NULL, NULL);
 
-            // class \Buddel\ServerBindingException extends \Buddel\RuntimeException
-            PHP_BUDDEL_REGISTER_SUBCLASS( &ce_buddel_ServerBindingException, ce_buddel_RuntimeException,
-                ZEND_NS_NAME(PHP_BUDDEL_NS, "ServerBindingException"), NULL, NULL);
+            // class \Can\ServerBindingException extends \Can\RuntimeException
+            PHP_CAN_REGISTER_SUBCLASS( &ce_can_ServerBindingException, ce_can_RuntimeException,
+                ZEND_NS_NAME(PHP_CAN_NS, "ServerBindingException"), NULL, NULL);
 
-        // class \Buddel\LogicException extends \Buddel\Exception
-        PHP_BUDDEL_REGISTER_SUBCLASS( &ce_buddel_LogicException, ce_buddel_Exception,
-            ZEND_NS_NAME(PHP_BUDDEL_NS, "LogicException"), NULL, NULL);
+        // class \Can\LogicException extends \Can\Exception
+        PHP_CAN_REGISTER_SUBCLASS( &ce_can_LogicException, ce_can_Exception,
+            ZEND_NS_NAME(PHP_CAN_NS, "LogicException"), NULL, NULL);
 
-        // class \Buddel\InvalidParametersException extends \Buddel\LogicException
-        PHP_BUDDEL_REGISTER_SUBCLASS( &ce_buddel_InvalidParametersException, ce_buddel_LogicException,
-            ZEND_NS_NAME(PHP_BUDDEL_NS, "InvalidParametersException"), NULL, NULL);
+        // class \Can\InvalidParametersException extends \Can\LogicException
+        PHP_CAN_REGISTER_SUBCLASS( &ce_can_InvalidParametersException, ce_can_LogicException,
+            ZEND_NS_NAME(PHP_CAN_NS, "InvalidParametersException"), NULL, NULL);
 
-        // class \Buddel\InvalidCallbackException extends \Buddel\LogicException
-        PHP_BUDDEL_REGISTER_SUBCLASS( &ce_buddel_InvalidCallbackException, ce_buddel_LogicException,
-            ZEND_NS_NAME(PHP_BUDDEL_NS, "InvalidCallbackException"), NULL, NULL);
+        // class \Can\InvalidCallbackException extends \Can\LogicException
+        PHP_CAN_REGISTER_SUBCLASS( &ce_can_InvalidCallbackException, ce_can_LogicException,
+            ZEND_NS_NAME(PHP_CAN_NS, "InvalidCallbackException"), NULL, NULL);
 
-        // class \Buddel\InvalidOperationException extends \Buddel\LogicException
-        PHP_BUDDEL_REGISTER_SUBCLASS( &ce_buddel_InvalidOperationException, ce_buddel_LogicException,
-            ZEND_NS_NAME(PHP_BUDDEL_NS, "InvalidOperationException"), NULL, NULL);
+        // class \Can\InvalidOperationException extends \Can\LogicException
+        PHP_CAN_REGISTER_SUBCLASS( &ce_can_InvalidOperationException, ce_can_LogicException,
+            ZEND_NS_NAME(PHP_CAN_NS, "InvalidOperationException"), NULL, NULL);
         
-        // class \Buddel\HTTPError extends \Buddel\LogicException
-        PHP_BUDDEL_REGISTER_SUBCLASS(
-            &ce_buddel_HTTPError, 
-            ce_buddel_LogicException,
-            ZEND_NS_NAME(PHP_BUDDEL_NS, "HTTPError"), 
+        // class \Can\HTTPError extends \Can\LogicException
+        PHP_CAN_REGISTER_SUBCLASS(
+            &ce_can_HTTPError, 
+            ce_can_LogicException,
+            ZEND_NS_NAME(PHP_CAN_NS, "HTTPError"), 
             NULL, 
             http_error_methods
         );
 }
 
-PHP_MINIT_FUNCTION(buddel_exception)
+PHP_MINIT_FUNCTION(can_exception)
 {
-    buddel_exceptions_init(TSRMLS_C);
+    can_exceptions_init(TSRMLS_C);
     return SUCCESS;
 }
 
-PHP_MSHUTDOWN_FUNCTION(buddel_exception)
-{
-    return SUCCESS;
-}
-
-PHP_RINIT_FUNCTION(buddel_exception)
+PHP_MSHUTDOWN_FUNCTION(can_exception)
 {
     return SUCCESS;
 }
 
-PHP_RSHUTDOWN_FUNCTION(buddel_exception)
+PHP_RINIT_FUNCTION(can_exception)
+{
+    return SUCCESS;
+}
+
+PHP_RSHUTDOWN_FUNCTION(can_exception)
 {
     return SUCCESS;
 }

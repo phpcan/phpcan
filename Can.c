@@ -25,17 +25,17 @@
 #include "ext/standard/info.h"
 #include "ext/standard/php_string.h"
 #include "ext/standard/php_smart_str.h"
-#include "php_buddel.h"
+#include "php_can.h"
 
 #include <signal.h>
     
-#ifdef COMPILE_DL_BUDDEL
-ZEND_GET_MODULE(buddel)
+#ifdef COMPILE_DL_CAN
+ZEND_GET_MODULE(can)
 #endif
 /**
  * Find the position of the first occurrence of a substring in a string
  */
-int php_buddel_strpos(char *haystack, char *needle, int offset)
+int php_can_strpos(char *haystack, char *needle, int offset)
 {
     if (!haystack) {
         return FAILURE;
@@ -78,7 +78,7 @@ int php_buddel_strpos(char *haystack, char *needle, int offset)
  *            If length is omitted, the substring starting from start until the end of the string will be returned. 
  * @return 
  */
-char * php_buddel_substr(char *str, int f, int l)
+char * php_can_substr(char *str, int f, int l)
 {
     int str_len = strlen(str) + 1;
 
@@ -124,7 +124,7 @@ char * php_buddel_substr(char *str, int f, int l)
     return estrndup(str + f, l);
 }
 
-zval * php_buddel_strtr_array(char *str, int slen, HashTable *hash)
+zval * php_can_strtr_array(char *str, int slen, HashTable *hash)
 {
     zval **entry;
     char  *string_key;
@@ -241,7 +241,7 @@ zval * php_buddel_strtr_array(char *str, int slen, HashTable *hash)
  * (which we might not want).
  * @return 
  */
-static int php_buddel_ignore_sigpipe(void)
+static int php_can_ignore_sigpipe(void)
 {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -255,7 +255,7 @@ static int php_buddel_ignore_sigpipe(void)
 /**
  * Register standard class
  */
-void php_buddel_register_std_class(
+void php_can_register_std_class(
     zend_class_entry ** ppce,
     char * class_name,
     void * obj_ctor,
@@ -275,7 +275,7 @@ void php_buddel_register_std_class(
 /**
  * Register subclass
  */
-void php_buddel_register_sub_class(
+void php_can_register_sub_class(
     zend_class_entry ** ppce,
     zend_class_entry * parent_ce,
     char * class_name,
@@ -295,74 +295,74 @@ void php_buddel_register_sub_class(
     }
 }
 
-static zend_function_entry buddel_functions[] = {
+static zend_function_entry can_functions[] = {
     {NULL, NULL, NULL}
 };
 
-static zend_module_dep buddel_deps[] = {
+static zend_module_dep can_deps[] = {
     ZEND_MOD_REQUIRED("pcre")
     {NULL, NULL, NULL}
 };
 
-zend_module_entry buddel_module_entry = {
+zend_module_entry can_module_entry = {
     STANDARD_MODULE_HEADER_EX, NULL,
-    buddel_deps,
-    "buddel",
-    buddel_functions,
-    PHP_MINIT(buddel),
-    PHP_MSHUTDOWN(buddel),
-    PHP_RINIT(buddel),
-    PHP_RSHUTDOWN(buddel),
-    PHP_MINFO(buddel),
-    PHP_BUDDEL_VERSION,
+    can_deps,
+    "can",
+    can_functions,
+    PHP_MINIT(can),
+    PHP_MSHUTDOWN(can),
+    PHP_RINIT(can),
+    PHP_RSHUTDOWN(can),
+    PHP_MINFO(can),
+    PHP_CAN_VERSION,
     STANDARD_MODULE_PROPERTIES
 };
 
-PHP_MINIT_FUNCTION(buddel)
+PHP_MINIT_FUNCTION(can)
 {
-    php_buddel_ignore_sigpipe();
+    php_can_ignore_sigpipe();
 
-    return PHP_MINIT(buddel_exception)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MINIT(buddel_server)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MINIT(buddel_server_router)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MINIT(buddel_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MINIT(buddel_server_request)(INIT_FUNC_ARGS_PASSTHRU);
+    return PHP_MINIT(can_exception)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MINIT(can_server)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MINIT(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MINIT(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MINIT(can_server_request)(INIT_FUNC_ARGS_PASSTHRU);
 }
-PHP_MSHUTDOWN_FUNCTION(buddel)
+PHP_MSHUTDOWN_FUNCTION(can)
 {
-    return PHP_MSHUTDOWN(buddel_exception)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MSHUTDOWN(buddel_server)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MSHUTDOWN(buddel_server_router)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MSHUTDOWN(buddel_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MSHUTDOWN(buddel_server_request)(INIT_FUNC_ARGS_PASSTHRU);
-}
-
-PHP_RINIT_FUNCTION(buddel)
-{
-    return PHP_RINIT(buddel_exception)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RINIT(buddel_server)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RINIT(buddel_server_router)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RINIT(buddel_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RINIT(buddel_server_request)(INIT_FUNC_ARGS_PASSTHRU);
-}
-PHP_RSHUTDOWN_FUNCTION(buddel)
-{
-    return PHP_RSHUTDOWN(buddel_exception)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RSHUTDOWN(buddel_server)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RSHUTDOWN(buddel_server_router)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RSHUTDOWN(buddel_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RSHUTDOWN(buddel_server_request)(INIT_FUNC_ARGS_PASSTHRU);
+    return PHP_MSHUTDOWN(can_exception)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MSHUTDOWN(can_server)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MSHUTDOWN(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MSHUTDOWN(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MSHUTDOWN(can_server_request)(INIT_FUNC_ARGS_PASSTHRU);
 }
 
-PHP_MINFO_FUNCTION(buddel)
+PHP_RINIT_FUNCTION(can)
+{
+    return PHP_RINIT(can_exception)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RINIT(can_server)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RINIT(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RINIT(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RINIT(can_server_request)(INIT_FUNC_ARGS_PASSTHRU);
+}
+PHP_RSHUTDOWN_FUNCTION(can)
+{
+    return PHP_RSHUTDOWN(can_exception)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RSHUTDOWN(can_server)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RSHUTDOWN(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RSHUTDOWN(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RSHUTDOWN(can_server_request)(INIT_FUNC_ARGS_PASSTHRU);
+}
+
+PHP_MINFO_FUNCTION(can)
 {
     #include <event.h>
     char buf[64];
     snprintf(buf, sizeof(buf) - 1, "%s", event_get_version());
 
     php_info_print_table_start();
-    php_info_print_table_row(2, "Buddel extension", "enabled");
-    php_info_print_table_row(2, "Version", PHP_BUDDEL_VERSION);
+    php_info_print_table_row(2, "PHP Can Web Framework", "enabled");
+    php_info_print_table_row(2, "Version", PHP_CAN_VERSION);
     php_info_print_table_row(2, "Build Date", __DATE__ " " __TIME__);
     php_info_print_table_row(2, "libevent version", buf);
     php_info_print_table_end();

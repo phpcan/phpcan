@@ -30,7 +30,7 @@
 static int unlink_filename(zval **item TSRMLS_DC)
 {
     if (Z_TYPE_PP(item) == IS_STRING
-        && strstr(Z_STRVAL_PP(item), "/phpbuddel") != NULL) {
+        && strstr(Z_STRVAL_PP(item), "/phpcan") != NULL) {
         VCWD_UNLINK(Z_STRVAL_PP(item));
     }
     zval_ptr_dtor(item);
@@ -186,7 +186,7 @@ static int unlink_uploaded_files(char **filename TSRMLS_DC)
     return 0;
 }
 
-void  php_buddel_parse_multipart(const char* content_type, struct evbuffer* buffer, zval* post, zval** files TSRMLS_DC)
+void  php_can_parse_multipart(const char* content_type, struct evbuffer* buffer, zval* post, zval** files TSRMLS_DC)
 {
     char *boundary      = NULL,
          *boundary_end  = NULL,
@@ -225,8 +225,8 @@ void  php_buddel_parse_multipart(const char* content_type, struct evbuffer* buff
         boundary++;
         boundary_end = strchr(boundary, '"');
         if (!boundary_end) {
-            php_buddel_throw_exception(
-                ce_buddel_LogicException TSRMLS_CC,
+            php_can_throw_exception(
+                ce_can_LogicException TSRMLS_CC,
                 "Invalid boundary in multipart/form-data POST data"
             );
             return;

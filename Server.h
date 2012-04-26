@@ -16,49 +16,52 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef BUDDEL_HTTPSVC_SERVER_H
-#define BUDDEL_HTTPSVC_SERVER_H
+#ifndef CAN_HTTPSVC_SERVER_H
+#define CAN_HTTPSVC_SERVER_H
 
 #include "php.h"
 #include "fopen_wrappers.h"
 #include "ext/date/php_date.h"
 #include "ext/standard/php_array.h"
 #include "ext/standard/php_string.h"
+#ifdef HAVE_JSON
+#include "ext/json/php_json.h"
+#endif
 #include "ext/standard/url.h"
 #include "ext/pcre/php_pcre.h"
 #include "php_variables.h"
-#include "php_buddel.h"
+#include "php_can.h"
 #include "Exception.h"
 
-#define PHP_BUDDEL_SERVER_NAME    "Buddel HTTP Server"
-#define PHP_BUDDEL_SERVER_VERSION "0.1.0"
+#define PHP_CAN_SERVER_NAME    "PHP Can HTTP Server"
+#define PHP_CAN_SERVER_VERSION "0.1.0"
 
-#define PHP_BUDDEL_SERVER_RESPONSE_STATUS_NONE    0
-#define PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENDING 1
-#define PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENT    2
+#define PHP_CAN_SERVER_RESPONSE_STATUS_NONE    0
+#define PHP_CAN_SERVER_RESPONSE_STATUS_SENDING 1
+#define PHP_CAN_SERVER_RESPONSE_STATUS_SENT    2
 
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_GET        1
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_POST       2
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_HEAD       4
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_PUT        8
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_DELETE    16
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_OPTIONS   32
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_TRACE     64
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_CONNECT   128
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_PATCH     256
-#define PHP_BUDDEL_SERVER_ROUTE_METHOD_ALL       511
+#define PHP_CAN_SERVER_ROUTE_METHOD_GET        1
+#define PHP_CAN_SERVER_ROUTE_METHOD_POST       2
+#define PHP_CAN_SERVER_ROUTE_METHOD_HEAD       4
+#define PHP_CAN_SERVER_ROUTE_METHOD_PUT        8
+#define PHP_CAN_SERVER_ROUTE_METHOD_DELETE    16
+#define PHP_CAN_SERVER_ROUTE_METHOD_OPTIONS   32
+#define PHP_CAN_SERVER_ROUTE_METHOD_TRACE     64
+#define PHP_CAN_SERVER_ROUTE_METHOD_CONNECT   128
+#define PHP_CAN_SERVER_ROUTE_METHOD_PATCH     256
+#define PHP_CAN_SERVER_ROUTE_METHOD_ALL       511
 
 #ifndef IS_PATH
 #define IS_PATH 99
 #endif
 
-extern zend_class_entry *ce_buddel_server;
-extern zend_class_entry *ce_buddel_server_request;
-extern zend_class_entry *ce_buddel_server_response;
-extern zend_class_entry *ce_buddel_server_route;
-extern zend_class_entry *ce_buddel_server_router;
+extern zend_class_entry *ce_can_server;
+extern zend_class_entry *ce_can_server_request;
+extern zend_class_entry *ce_can_server_response;
+extern zend_class_entry *ce_can_server_route;
+extern zend_class_entry *ce_can_server_router;
 
-struct php_buddel_server {
+struct php_can_server {
     zend_object std;
     zval refhandle;
     struct evhttp *http;
@@ -71,7 +74,7 @@ struct php_buddel_server {
     zval *router;
 };
 
-struct php_buddel_server_request {
+struct php_can_server_request {
     zend_object std;
     zval refhandle;
     struct evhttp_request *req;
@@ -88,7 +91,7 @@ struct php_buddel_server_request {
     char *query;
 };
 
-struct php_buddel_server_route {
+struct php_can_server_route {
     zend_object std;
     zval refhandle;
     char *route;
@@ -98,14 +101,36 @@ struct php_buddel_server_route {
     zval *casts;
 };
 
-struct php_buddel_server_router {
+struct php_can_server_router {
     zend_object std;
     zval refhandle;
+    /**
+     * Container for all routes, one domension array
+     * where key is route index and value - route instance
+     */
     zval *routes;
-    zval *methods;
+    /**
+     * Container where we will search for the routes
+     * two dimensional array in format:
+     * array(
+     *   'GET' => array(
+     *     '/what/ever/' => 2, // route index
+     *   ),
+     *   'POST' => array( ... )
+     * )
+     */
+    zval *method_routes;
+    /**
+     * Container where we will search through for the routes
+     * in case we cannot find the route in router->method_routes
+     * Actually the search through this container will be made only 
+     * to determine what kind of error response code we must send
+     * back to the client: 404 Not Found or 405 Method Not Allowed
+     */
+    zval *route_methods;
 };
 
-struct php_buddel_server_logentry {
+struct php_can_server_logentry {
     double request_time;
     int    request_type;
     char * request_uri;
@@ -134,7 +159,7 @@ struct php_buddel_server_logentry {
     }
 
 #define LOGENTRY_CTOR(logentry, request) \
-    logentry = (struct php_buddel_server_logentry *) ecalloc(1, sizeof(*logentry)); \
+    logentry = (struct php_can_server_logentry *) ecalloc(1, sizeof(*logentry)); \
     logentry->request_time = request->time; \
     logentry->request_type = request->req->type; \
     logentry->request_uri = (char *)evhttp_request_uri(request->req); \
@@ -150,43 +175,43 @@ struct php_buddel_server_logentry {
 #define LOGENTRY_LOG(logentry, server, count) \
     double now; SETNOW(now); \
     zval *map; MAKE_STD_ZVAL(map); array_init(map); \
-    if (php_buddel_strpos(server->logformat, "cs-uri", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "cs-uri", 0) != FAILURE) \
         add_assoc_string(map, "cs-uri", logentry->uri, 1); \
-    if (php_buddel_strpos(server->logformat, "cs-query", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "cs-query", 0) != FAILURE) \
         add_assoc_string(map, "cs-query", logentry->query, 1); \
-    if (php_buddel_strpos(server->logformat, "c-ip", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "c-ip", 0) != FAILURE) \
         add_assoc_string(map, "c-ip", logentry->remote_host, 1); \
-    if (php_buddel_strpos(server->logformat, "c-port", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "c-port", 0) != FAILURE) \
         add_assoc_long(map, "c-port", logentry->remote_port); \
-    if (php_buddel_strpos(server->logformat, "cs-method", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "cs-method", 0) != FAILURE) \
         add_assoc_string(map, "cs-method", typeToMethod(logentry->request_type), 1); \
-    if (php_buddel_strpos(server->logformat, "cs-uri", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "cs-uri", 0) != FAILURE) \
         add_assoc_string(map, "cs-uri", logentry->request_uri, 1); \
-    if (php_buddel_strpos(server->logformat, "sc-status", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "sc-status", 0) != FAILURE) \
         add_assoc_long(map, "sc-status", logentry->response_status); \
-    if (php_buddel_strpos(server->logformat, "sc-bytes", 0) != FAILURE) { \
+    if (php_can_strpos(server->logformat, "sc-bytes", 0) != FAILURE) { \
         if (logentry->response_len > 0) add_assoc_long(map, "sc-bytes", logentry->response_len); \
         else add_assoc_stringl(map, "sc-bytes", "-", 1, 1); \
     } \
-    if (php_buddel_strpos(server->logformat, "x-reqnum", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "x-reqnum", 0) != FAILURE) \
         add_assoc_long(map, "x-reqnum", count); \
-    if (php_buddel_strpos(server->logformat, "x-memusage", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "x-memusage", 0) != FAILURE) \
         add_assoc_long(map, "x-memusage", zend_memory_usage(0 TSRMLS_CC)); \
-    if (php_buddel_strpos(server->logformat, "time", 0) != FAILURE) { \
+    if (php_can_strpos(server->logformat, "time", 0) != FAILURE) { \
         char *str_time = php_format_date("H:i:s", sizeof("H:i:s"), (long)now, 1 TSRMLS_CC); \
         add_assoc_string(map, "time", str_time, 0); } \
-    if (php_buddel_strpos(server->logformat, "date", 0) != FAILURE) { \
+    if (php_can_strpos(server->logformat, "date", 0) != FAILURE) { \
         char *str_time = php_format_date("Y-m-d", sizeof("Y-m-d"), (long)now, 1 TSRMLS_CC); \
         add_assoc_string(map, "date", str_time, 0); } \
-    if (php_buddel_strpos(server->logformat, "time-taken", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "time-taken", 0) != FAILURE) \
         add_assoc_long(map, "time-taken", (now - logentry->request_time) * 1000); \
-    if (php_buddel_strpos(server->logformat, "bytes", 0) != FAILURE) { \
+    if (php_can_strpos(server->logformat, "bytes", 0) != FAILURE) { \
         if (logentry->response_len > 0) add_assoc_long(map, "bytes", logentry->response_len); \
         else add_assoc_stringl(map, "bytes", "-", 1, 1); \
     } \
-    if (php_buddel_strpos(server->logformat, "x-error", 0) != FAILURE) \
+    if (php_can_strpos(server->logformat, "x-error", 0) != FAILURE) \
         add_assoc_string(map, "x-error", logentry->error, 1); \
-    zval *msg = php_buddel_strtr_array(server->logformat, server->logformat_len, Z_ARRVAL_P(map)); \
+    zval *msg = php_can_strtr_array(server->logformat, server->logformat_len, Z_ARRVAL_P(map)); \
     WRITELOG(server, Z_STRVAL_P(msg), Z_STRLEN_P(msg)); \
     zval_ptr_dtor(&msg); \
     zval_ptr_dtor(&map);
@@ -197,9 +222,9 @@ struct php_buddel_server_logentry {
     efree(logentry->error); \
     efree(logentry); 
 
-PHP_MINIT_FUNCTION(buddel_server);
-PHP_MSHUTDOWN_FUNCTION(buddel_server);
-PHP_RINIT_FUNCTION(buddel_server);
-PHP_RSHUTDOWN_FUNCTION(buddel_server);
+PHP_MINIT_FUNCTION(can_server);
+PHP_MSHUTDOWN_FUNCTION(can_server);
+PHP_RINIT_FUNCTION(can_server);
+PHP_RSHUTDOWN_FUNCTION(can_server);
 
-#endif /* BUDDEL_HTTPSVC_SERVER_H */
+#endif /* CAN_HTTPSVC_SERVER_H */

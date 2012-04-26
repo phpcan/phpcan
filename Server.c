@@ -29,15 +29,15 @@
 
 static long request_counter = 0;
 
-zend_class_entry *ce_buddel_server;
+zend_class_entry *ce_can_server;
 static zend_object_handlers server_obj_handlers;
 
-void php_buddel_parse_multipart(const char* content_type, struct evbuffer* buffer, zval* post, zval** files TSRMLS_DC);
+void php_can_parse_multipart(const char* content_type, struct evbuffer* buffer, zval* post, zval** files TSRMLS_DC);
 static void server_dtor(void *object TSRMLS_DC);
 
 static zend_object_value server_ctor(zend_class_entry *ce TSRMLS_DC)
 {
-    struct php_buddel_server *s;
+    struct php_can_server *s;
     zend_object_value retval;
 
     s = ecalloc(1, sizeof(*s));
@@ -56,7 +56,7 @@ static zend_object_value server_ctor(zend_class_entry *ce TSRMLS_DC)
 
 static void server_dtor(void *object TSRMLS_DC)
 {
-    struct php_buddel_server *s = (struct php_buddel_server*)object;
+    struct php_can_server *s = (struct php_can_server*)object;
 
     if (s->http) {
         free(s->http);
@@ -90,36 +90,16 @@ static void server_dtor(void *object TSRMLS_DC)
 static char * typeToMethod(int type)
 {
     switch (type) {
-        case EVHTTP_REQ_GET:
-            return "GET";
-            break;
-        case EVHTTP_REQ_POST:
-            return "POST";
-            break;
-        case EVHTTP_REQ_HEAD:
-            return "HEAD";
-            break;
-        case EVHTTP_REQ_PUT:
-            return "PUT";
-            break;
-        case EVHTTP_REQ_DELETE:
-            return "DELETE";
-            break;
-        case EVHTTP_REQ_OPTIONS:
-            return "OPTIONS";
-            break;
-        case EVHTTP_REQ_TRACE:
-            return "TRACE";
-            break;
-        case EVHTTP_REQ_CONNECT:
-            return "CONNECT";
-            break;
-        case EVHTTP_REQ_PATCH:
-            return "PATCH";
-            break;
-        default:
-            return "Unknown";
-            break;
+        case EVHTTP_REQ_GET: return "GET"; break;
+        case EVHTTP_REQ_POST: return "POST"; break;
+        case EVHTTP_REQ_HEAD: return "HEAD"; break;
+        case EVHTTP_REQ_PUT: return "PUT"; break;
+        case EVHTTP_REQ_DELETE: return "DELETE"; break;
+        case EVHTTP_REQ_OPTIONS: return "OPTIONS"; break;
+        case EVHTTP_REQ_TRACE: return "TRACE"; break;
+        case EVHTTP_REQ_CONNECT: return "CONNECT"; break;
+        case EVHTTP_REQ_PATCH: return "PATCH"; break;
+        default: return "Unknown"; break;
     }
 }
 
@@ -208,10 +188,10 @@ static void request_handler(struct evhttp_request *req, void *arg)
     request_counter++;
 
     zval *request, *args[2];
-    struct php_buddel_server *s = (struct php_buddel_server*)arg;
-    struct php_buddel_server_request *r;
-    struct php_buddel_server_router *router;
-    struct php_buddel_server_route *route = NULL;
+    struct php_can_server *s = (struct php_can_server*)arg;
+    struct php_can_server_request *r;
+    struct php_can_server_router *router;
+    struct php_can_server_route *route = NULL;
     const char *cookie = NULL, *content_type = NULL, *content_length = NULL;
     long content_len = 0, buffer_len = 0;
     zval retval, *params;
@@ -222,9 +202,9 @@ static void request_handler(struct evhttp_request *req, void *arg)
     
     // create request object
     MAKE_STD_ZVAL(request);
-    object_init_ex(request, ce_buddel_server_request);
+    object_init_ex(request, ce_can_server_request);
     Z_SET_REFCOUNT_P(request, 1);
-    r = (struct php_buddel_server_request *)zend_object_store_get_object(request TSRMLS_CC);
+    r = (struct php_can_server_request *)zend_object_store_get_object(request TSRMLS_CC);
     r->req = req;
     
     // set request time
@@ -244,19 +224,20 @@ static void request_handler(struct evhttp_request *req, void *arg)
         array_init(params);
         
         // try to find route handler
-        router = (struct php_buddel_server_router *)zend_object_store_get_object(s->router TSRMLS_CC);
+        router = (struct php_can_server_router *)zend_object_store_get_object(s->router TSRMLS_CC);
         char *method = typeToMethod(req->type);
-        zval **tmp;
-        if (FAILURE != zend_hash_find(Z_ARRVAL_P(router->methods), method, strlen(method) + 1, (void **)&tmp)) {
+        zval **method_routes;
+        if (FAILURE != zend_hash_find(Z_ARRVAL_P(router->method_routes), method, strlen(method) + 1, (void **)&method_routes)) {
             zval **item;
-            if (FAILURE != zend_hash_find(Z_ARRVAL_PP(tmp), uri_path, strlen(uri_path) + 1, (void **)&item)) {
+            if (FAILURE != zend_hash_find(Z_ARRVAL_PP(method_routes), uri_path, strlen(uri_path) + 1, (void **)&item)) {
                 // static route
                 routeIndex = Z_LVAL_PP(item);
             } else {
-                // dynamic routes
-                PHP_BUDDEL_FOREACH(*tmp, item) {
+                // dynamic routes, apply regexp to the URI
+                PHP_CAN_FOREACH(*method_routes, item) {
                     if (strkey[0] == '\1') {
                         pcre_cache_entry *pce;
+                        // TODO: cache compiled pce
                         if (NULL != (pce = pcre_get_compiled_regex_cache(strkey, strlen(strkey) TSRMLS_CC))) {
                             zval *subpats = NULL;
                             zval *res = NULL;
@@ -266,7 +247,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                             if(Z_LVAL_P(res) > 0) {
                                 routeIndex = Z_LVAL_PP(item);
                                 zval **match;
-                                PHP_BUDDEL_FOREACH(subpats, match) {
+                                PHP_CAN_FOREACH(subpats, match) {
                                     if (keytype == HASH_KEY_IS_STRING) {
                                         char * param = estrndup(Z_STRVAL_PP(match), Z_STRLEN_PP(match));
                                         int param_len = php_url_decode(param, Z_STRLEN_PP(match));
@@ -287,19 +268,44 @@ static void request_handler(struct evhttp_request *req, void *arg)
 
         zval **zroute;
         if (routeIndex == -1 || FAILURE == zend_hash_index_find(Z_ARRVAL_P(router->routes), routeIndex, (void **)&zroute)) {
-            
-            r->response_status = 404;
+            // there is definitely no such route for requested HTTP method
+            // we search through route_methods to determine what HTTP response we send back
+            zval **item;
+            zend_bool found = 0;
+            PHP_CAN_FOREACH(router->route_methods, item) {
+                if (strkey[0] == '\1') {
+                    pcre_cache_entry *pce;
+                    // TODO: cache compiled pce
+                    if (NULL != (pce = pcre_get_compiled_regex_cache(strkey, strlen(strkey) TSRMLS_CC))) {
+                        zval *subpats = NULL;
+                        zval *res = NULL;
+                        ALLOC_INIT_ZVAL(subpats);
+                        ALLOC_INIT_ZVAL(res);
+                        php_pcre_match_impl(pce, (char *)uri_path, strlen(uri_path), res, subpats, 0, 0, 0, 0 TSRMLS_CC);
+                        if(Z_LVAL_P(res) > 0) {
+                            // route exists, so we send 405
+                            found = 1;
+                        }
+                        zval_ptr_dtor(&subpats);
+                        zval_ptr_dtor(&res);
+                        if (found) {
+                            break;
+                        }
+                    }
+                }
+            }
+            r->response_status = found ? 405 : 404;
             spprintf(&r->error, 0, "Cannot determine route for the path '%s'", uri_path);
             
         } else {
 
             // set route
-            route = (struct php_buddel_server_route *)zend_object_store_get_object(*zroute TSRMLS_CC);
+            route = (struct php_can_server_route *)zend_object_store_get_object(*zroute TSRMLS_CC);
             
             // check if we must cast params
             if (zend_hash_num_elements(Z_ARRVAL_P(route->casts))) {
                 zval **item, **param;
-                PHP_BUDDEL_FOREACH(route->casts, item) {
+                PHP_CAN_FOREACH(route->casts, item) {
                     if (FAILURE != zend_hash_find(Z_ARRVAL_P(params), strkey, strlen(strkey) + 1, (void **)&param)) {
                         if (Z_LVAL_PP(item) == IS_LONG) {
                             convert_to_long_ex(param);
@@ -358,7 +364,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                         MAKE_STD_ZVAL(r->post);
                         array_init(r->post);
                         if (NULL != strstr(content_type, "multipart/form-data")) {
-                             php_buddel_parse_multipart(content_type, r->req->input_buffer, r->post, &r->files TSRMLS_CC);
+                             php_can_parse_multipart(content_type, r->req->input_buffer, r->post, &r->files TSRMLS_CC);
                         } else if (NULL != strstr(content_type, "application/x-www-form-urlencoded")) {
                             php_default_treat_data(PARSE_STRING,
                                 estrndup(EVBUFFER_DATA( r->req->input_buffer ), buffer_len),
@@ -381,7 +387,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 Z_ADDREF_P(args[1]);
 
                 if (call_user_function(EG(function_table), NULL, route->handler, &retval, 2, args TSRMLS_CC) == SUCCESS) {
-                    if (r->status != PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENT) {
+                    if (r->status != PHP_CAN_SERVER_RESPONSE_STATUS_SENT) {
                         if (r->response_status == 0) {
                             r->response_status = 200;
                         }
@@ -395,15 +401,39 @@ static void request_handler(struct evhttp_request *req, void *arg)
                                 // empty response
                             } else {
                                 // non-scalar
-                                r->response_status = 500;
-                                spprintf(&r->error, 0, "Request handler must return a string instead of %s", 
-                                    Z_TYPE(retval) == IS_ARRAY ? "array" : 
-                                        Z_TYPE(retval) == IS_OBJECT ? "object" :
-                                            Z_TYPE(retval) == IS_LONG ? "integer" :
-                                                Z_TYPE(retval) == IS_DOUBLE ? "double" :
-                                                    Z_TYPE(retval) == IS_BOOL ? "boolean‚" :
-                                                        Z_TYPE(retval) == IS_RESOURCE ? "resource" : "unknown"
-                                );
+#ifdef HAVE_JSON
+                                zend_class_entry **cep;
+                                if (Z_TYPE(retval) == IS_OBJECT 
+                                        && zend_lookup_class_ex("\\JsonSerializable", sizeof("\\JsonSerializable") - 1, NULL, 0, &cep TSRMLS_CC) == SUCCESS
+                                        && instanceof_function(Z_OBJCE(retval), *cep TSRMLS_CC)
+                                ) {
+                                    // implements JsonSerializable
+                                    zval *object = &retval, *result;
+                                    zend_call_method_with_0_params(&object, NULL, NULL, "jsonSerialize", &result);
+                                    if (result) {
+                                        if (Z_TYPE_P(result) == IS_STRING && Z_STRLEN_P(result) > 0) {
+                                            if (-1 != evhttp_add_header(r->req->output_headers, "Content-Type", 
+                                                    "application/json")) {
+                                                r->response_len = Z_STRLEN_P(result);
+                                                evbuffer_add(buffer, Z_STRVAL_P(result), Z_STRLEN_P(result));
+                                            }
+                                        }
+                                        zval_ptr_dtor(&result);
+                                    }
+                                 
+                                }
+#endif
+                                if (r->response_len == 0) {
+                                    r->response_status = 500;
+                                    spprintf(&r->error, 0, "Request handler must return a string instead of %s", 
+                                        Z_TYPE(retval) == IS_ARRAY ? "array" : 
+                                            Z_TYPE(retval) == IS_OBJECT ? "object" :
+                                                Z_TYPE(retval) == IS_LONG ? "integer" :
+                                                    Z_TYPE(retval) == IS_DOUBLE ? "double" :
+                                                        Z_TYPE(retval) == IS_BOOL ? "boolean‚" :
+                                                            Z_TYPE(retval) == IS_RESOURCE ? "resource" : "unknown"
+                                    );
+                                }
                             }
                         }
                     }
@@ -417,7 +447,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
     }
     
     if(EG(exception)) {
-        if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_buddel_HTTPError TSRMLS_CC)) {
+        if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_can_HTTPError TSRMLS_CC)) {
             zval *code = NULL, *error = NULL;
             code  = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "code", sizeof("code")-1, 1 TSRMLS_CC);
             error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
@@ -438,14 +468,14 @@ static void request_handler(struct evhttp_request *req, void *arg)
         zend_clear_exception(TSRMLS_C);
     }
     
-    if (r->status != PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENT) {
+    if (r->status != PHP_CAN_SERVER_RESPONSE_STATUS_SENT) {
         // send response
         evhttp_send_reply(r->req, r->response_status, NULL, buffer);
     }
     
     evbuffer_free(buffer);
 
-    struct php_buddel_server_logentry *logentry;
+    struct php_can_server_logentry *logentry;
     LOGENTRY_CTOR(logentry, r);
 
     zval_ptr_dtor(&request);
@@ -462,10 +492,10 @@ static void request_handler(struct evhttp_request *req, void *arg)
  *
  *
  */
-static PHP_METHOD(BuddelServer, __construct)
+static PHP_METHOD(CanServer, __construct)
 {
     zval *object = getThis();
-    struct php_buddel_server *s;
+    struct php_can_server *s;
     char *addr, *logformat = NULL;
     int addr_len, logformat_len = 0, num_args = ZEND_NUM_ARGS();
     long port;
@@ -474,15 +504,15 @@ static PHP_METHOD(BuddelServer, __construct)
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, num_args TSRMLS_CC,
             "sl|sr", &addr, &addr_len, &port, &logformat, &logformat_len, &zlogfile)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $ip, integer $port[, string $log_format[, resource $log_handler]])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
     
-    s = (struct php_buddel_server*)zend_object_store_get_object(object TSRMLS_CC);
+    s = (struct php_can_server*)zend_object_store_get_object(object TSRMLS_CC);
 
     if (s->http) {
         /* called __construct() twice, bail out */
@@ -493,8 +523,8 @@ static PHP_METHOD(BuddelServer, __construct)
 
     // try to bind server on given ip and port
     if ((s->http = evhttp_start(addr, port)) == NULL) {
-        php_buddel_throw_exception(
-            ce_buddel_ServerBindingException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_ServerBindingException TSRMLS_CC,
             "Error binding server on %s port %d",
             addr, (int)port
         );
@@ -536,7 +566,7 @@ static PHP_METHOD(BuddelServer, __construct)
             "#Version: 1.0\n#Date: %s\n#Software: %s, version %s\n#"
             "Remark: Server binded to %s on port %d\n#"
             "Remark: W3C Extended Log File Format\n#Fields: %s",
-            date, PHP_BUDDEL_SERVER_NAME, PHP_BUDDEL_SERVER_VERSION, addr, (int)port, s->logformat
+            date, PHP_CAN_SERVER_NAME, PHP_CAN_SERVER_VERSION, addr, (int)port, s->logformat
         );
         WRITELOG(s, msg, len);
         efree(msg);
@@ -549,22 +579,22 @@ static PHP_METHOD(BuddelServer, __construct)
  *
  *
  */
-static PHP_METHOD(BuddelServer, start)
+static PHP_METHOD(CanServer, start)
 {
     zval *zrouter = NULL;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "O", &zrouter, ce_buddel_server_router)) {
+            "O", &zrouter, ce_can_server_router)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(Routing $router)",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
 
-    struct php_buddel_server *s = (struct php_buddel_server*)
+    struct php_can_server *s = (struct php_can_server*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     zval_add_ref(&zrouter);
@@ -579,25 +609,25 @@ static PHP_METHOD(BuddelServer, start)
 /**
  * Stop server
  */
-static PHP_METHOD(BuddelServer, stop)
+static PHP_METHOD(CanServer, stop)
 {
-    struct php_buddel_server *s;
+    struct php_can_server *s;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "")) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(void)",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
 
-    s = (struct php_buddel_server*) zend_object_store_get_object(getThis() TSRMLS_CC);
+    s = (struct php_can_server*) zend_object_store_get_object(getThis() TSRMLS_CC);
 
     if (s->running == 0) {
-        php_buddel_throw_exception(
-            ce_buddel_InvalidOperationException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidOperationException TSRMLS_CC,
             "Server is not running"
         );
         return;
@@ -612,9 +642,9 @@ static PHP_METHOD(BuddelServer, stop)
 }
 
 static zend_function_entry server_methods[] = {
-    PHP_ME(BuddelServer, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServer, start,       NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServer, stop,        NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServer, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServer, start,       NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServer, stop,        NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
@@ -623,32 +653,32 @@ static void server_init(TSRMLS_D)
     memcpy(&server_obj_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
     server_obj_handlers.clone_obj = NULL;
 
-    // class \Buddel\Server
-    PHP_BUDDEL_REGISTER_CLASS(
-        &ce_buddel_server,
-        ZEND_NS_NAME(PHP_BUDDEL_NS, "Server"),
+    // class \Can\Server
+    PHP_CAN_REGISTER_CLASS(
+        &ce_can_server,
+        ZEND_NS_NAME(PHP_CAN_NS, "Server"),
         server_ctor,
         server_methods
     );
 }
 
-PHP_MINIT_FUNCTION(buddel_server)
+PHP_MINIT_FUNCTION(can_server)
 {
     server_init(TSRMLS_C);
     return SUCCESS;
 }
 
-PHP_MSHUTDOWN_FUNCTION(buddel_server)
+PHP_MSHUTDOWN_FUNCTION(can_server)
 {
     return SUCCESS;
 }
 
-PHP_RINIT_FUNCTION(buddel_server)
+PHP_RINIT_FUNCTION(can_server)
 {
     return SUCCESS;
 }
 
-PHP_RSHUTDOWN_FUNCTION(buddel_server)
+PHP_RSHUTDOWN_FUNCTION(can_server)
 {
     return SUCCESS;
 }

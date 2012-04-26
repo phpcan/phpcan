@@ -27,14 +27,14 @@
 #include <signal.h>
 #include <sys/time.h>
 
-zend_class_entry *ce_buddel_server_request;
+zend_class_entry *ce_can_server_request;
 static zend_object_handlers server_request_obj_handlers;
 
 static void server_request_dtor(void *object TSRMLS_DC);
 
 static zend_object_value server_request_ctor(zend_class_entry *ce TSRMLS_DC)
 {
-    struct php_buddel_server_request *r;
+    struct php_can_server_request *r;
     zend_object_value retval;
 
     r = ecalloc(1, sizeof(*r));
@@ -43,7 +43,7 @@ static zend_object_value server_request_ctor(zend_class_entry *ce TSRMLS_DC)
     r->get = NULL;
     r->post = NULL;
     r->files = NULL;
-    r->status = PHP_BUDDEL_SERVER_RESPONSE_STATUS_NONE;
+    r->status = PHP_CAN_SERVER_RESPONSE_STATUS_NONE;
     r->uri = NULL;
     r->query = NULL;
     r->response_status = 0;
@@ -59,7 +59,7 @@ static zend_object_value server_request_ctor(zend_class_entry *ce TSRMLS_DC)
 
 static void server_request_dtor(void *object TSRMLS_DC)
 {
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)object;
+    struct php_can_server_request *r = (struct php_can_server_request*)object;
 
     if (r->req) {
         r->req = NULL;
@@ -139,14 +139,14 @@ static char * typeToMethod(int type)
 
 static zval *read_property(zval *object, zval *member, int type, const zend_literal *key TSRMLS_DC)
 {
-    struct php_buddel_server_request *r;
+    struct php_can_server_request *r;
     zval tmp_member;
     zval *retval;
     zend_object_handlers *std_hnd;
     struct evkeyval *header;
     char * str;
 
-    r = (struct php_buddel_server_request*)zend_object_store_get_object(object TSRMLS_CC);
+    r = (struct php_can_server_request*)zend_object_store_get_object(object TSRMLS_CC);
 
     if (member->type != IS_STRING) {
         tmp_member = *member;
@@ -306,7 +306,7 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
     char *str;
     struct evkeyval *header;
     
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_objects_get_address(object TSRMLS_CC);
     
     
@@ -406,7 +406,7 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
 /**
  * Constructor
  */
-static PHP_METHOD(BuddelServerRequest, __construct)
+static PHP_METHOD(CanServerRequest, __construct)
 {
     /* final protected */
 }
@@ -414,7 +414,7 @@ static PHP_METHOD(BuddelServerRequest, __construct)
 /**
  * Find request header
  */
-static PHP_METHOD(BuddelServerRequest, findRequestHeader)
+static PHP_METHOD(CanServerRequest, findRequestHeader)
 {
     char *header;
     int header_len;
@@ -422,15 +422,15 @@ static PHP_METHOD(BuddelServerRequest, findRequestHeader)
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "s", &header, &header_len)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $header)",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
     
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     const char *value =evhttp_find_header(r->req->input_headers, (const char*)header);
@@ -443,9 +443,9 @@ static PHP_METHOD(BuddelServerRequest, findRequestHeader)
 /**
  * Get raw request data
  */
-static PHP_METHOD(BuddelServerRequest, getRequestBody)
+static PHP_METHOD(CanServerRequest, getRequestBody)
 {
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     int buffer_len = EVBUFFER_LENGTH(r->req->input_buffer);
@@ -460,7 +460,7 @@ static PHP_METHOD(BuddelServerRequest, getRequestBody)
  *
  *
  */
-static PHP_METHOD(BuddelServerRequest, addResponseHeader)
+static PHP_METHOD(CanServerRequest, addResponseHeader)
 {
     char *header, *value;
     int header_len, value_len;
@@ -468,15 +468,15 @@ static PHP_METHOD(BuddelServerRequest, addResponseHeader)
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "ss", &header, &header_len, &value, &value_len)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $header, string $value)",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
 
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     if (evhttp_add_header(r->req->output_headers, header, value) != 0) {
@@ -490,7 +490,7 @@ static PHP_METHOD(BuddelServerRequest, addResponseHeader)
  *
  *
  */
-static PHP_METHOD(BuddelServerRequest, removeResponseHeader)
+static PHP_METHOD(CanServerRequest, removeResponseHeader)
 {
     char *header, *value;
     int header_len, value_len;
@@ -498,15 +498,15 @@ static PHP_METHOD(BuddelServerRequest, removeResponseHeader)
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "s", &header, &header_len)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $header)",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
 
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     if (evhttp_remove_header(r->req->output_headers, header) != 0) {
@@ -520,15 +520,15 @@ static PHP_METHOD(BuddelServerRequest, removeResponseHeader)
  *
  *
  */
-static PHP_METHOD(BuddelServerRequest, setResponseStatus)
+static PHP_METHOD(CanServerRequest, setResponseStatus)
 {
     long status;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "l", &status)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(int $status)",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
@@ -536,14 +536,14 @@ static PHP_METHOD(BuddelServerRequest, setResponseStatus)
     }
     
     if (status < 100 || status > 599) {
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "Expection valid HTTP status (100-599)"
         );
         return;
     }
 
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     r->response_status = status;
@@ -552,7 +552,7 @@ static PHP_METHOD(BuddelServerRequest, setResponseStatus)
 /**
  * Redirect client to new location
  */
-static PHP_METHOD(BuddelServerRequest, redirect)
+static PHP_METHOD(CanServerRequest, redirect)
 {
     char *location;
     int *location_len = 0;
@@ -560,15 +560,15 @@ static PHP_METHOD(BuddelServerRequest, redirect)
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "s", &location, &location_len) || location_len == 0) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $location)",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
     
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     if (evhttp_add_header(r->req->output_headers, "Location", location) != 0) {
@@ -581,7 +581,7 @@ static PHP_METHOD(BuddelServerRequest, redirect)
 /**
  * Set cookie
  */
-static PHP_METHOD(BuddelServerRequest, setCookie)
+static PHP_METHOD(CanServerRequest, setCookie)
 {
     char *name, *value, *path, *domain;
     int name_len = 0, value_len = 0, path_len = 0, domain_len = 0;
@@ -593,8 +593,8 @@ static PHP_METHOD(BuddelServerRequest, setCookie)
             &domain, &domain_len, &secure, &httponly) || name_len == 0
     ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $name [, string $value [, int $expire = 0 [, string $path "
             "[, string $domain [, bool $secure = false [, bool $httponly = false ]]]]]])",
             class_name, space, get_active_function_name(TSRMLS_C)
@@ -602,7 +602,7 @@ static PHP_METHOD(BuddelServerRequest, setCookie)
         return;
     }
     
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     char *cookie, *encoded_value = NULL;
@@ -611,16 +611,16 @@ static PHP_METHOD(BuddelServerRequest, setCookie)
     int result;
 
     if (name && strpbrk(name, "=,; \t\r\n\013\014") != NULL) {   /* man isspace for \013 and \014 */
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "Cookie names cannot contain any of the following '=,; \\t\\r\\n\\013\\014'"
         );
         return;
     }
 
     if (!url_encode && value && strpbrk(value, ",; \t\r\n\013\014") != NULL) { /* man isspace for \013 and \014 */
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "Cookie values cannot contain any of the following '=,; \\t\\r\\n\\013\\014'"
         );
         return;
@@ -664,8 +664,8 @@ static PHP_METHOD(BuddelServerRequest, setCookie)
                     efree(dt);
                     efree(cookie);
                     efree(encoded_value);
-                    php_buddel_throw_exception(
-                        ce_buddel_InvalidParametersException TSRMLS_CC,
+                    php_can_throw_exception(
+                        ce_can_InvalidParametersException TSRMLS_CC,
                         "Expiry date cannot have a year greater then 9999"
                     );
                     return;
@@ -725,7 +725,7 @@ static char *get_realpath(char *filename TSRMLS_DC)
 /**
  * Send file
  */
-static PHP_METHOD(BuddelServerRequest, sendFile)
+static PHP_METHOD(CanServerRequest, sendFile)
 {
     char *filename, *root, *mimetype;
     int filename_len, root_len = 0, *mimetype_len = 0;
@@ -736,8 +736,8 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
             "p|pszl", &filename, &filename_len, &root, &root_len, 
                      &mimetype, &mimetype_len, &download, &chunksize)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $filename[, string $root[, string $mimetype[, string $download[, int $chunksize=10240]]]])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
@@ -750,8 +750,8 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
         path = get_realpath(root TSRMLS_CC);
         if (path == NULL) {
             const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-            php_buddel_throw_exception(
-                ce_buddel_InvalidParametersException TSRMLS_CC,
+            php_can_throw_exception(
+                ce_can_InvalidParametersException TSRMLS_CC,
                 "%s%s%s(): Cannot determine real path of $root value '%s'",
                 class_name, space, get_active_function_name(TSRMLS_C),
                 root
@@ -769,8 +769,8 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
     path = get_realpath(filepath TSRMLS_CC);
     if (path == NULL) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_buddel_throw_exception(
-            ce_buddel_InvalidParametersException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(): Cannot determine real path of file '%s'",
             class_name, space, get_active_function_name(TSRMLS_C),
             filepath
@@ -779,7 +779,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
         return;
     }
     
-    struct php_buddel_server_request *r = (struct php_buddel_server_request*)
+    struct php_can_server_request *r = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
     // handle $mimetype
@@ -824,8 +824,8 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
             }
             
             if (result == FAILURE) {
-                php_buddel_throw_exception(
-                    ce_buddel_RuntimeException TSRMLS_CC,
+                php_can_throw_exception(
+                    ce_can_RuntimeException TSRMLS_CC,
                     "Failed to call '%s' constructor",
                     ce->name
                 );
@@ -887,8 +887,8 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
     // open stream wrapper to the file
     php_stream *stream = php_stream_open_wrapper(path, "rb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
     if (!stream) {
-        php_buddel_throw_exception(
-            ce_buddel_RuntimeException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
             "Cannot read content of the file '%s'", path
         );
         if (path != NULL) {
@@ -900,8 +900,8 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
     // get file stats
     php_stream_statbuf st;
     if (php_stream_stat(stream, &st) < 0) {
-        php_buddel_throw_exception(
-            ce_buddel_RuntimeException TSRMLS_CC,
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
             "Cannot stat of the file '%s'", path
         );
         if (path != NULL) {
@@ -999,10 +999,10 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
                 long range_from = 0, range_to = st.sb.st_size, range_len;
                 char *range = (char *)evhttp_find_header(r->req->input_headers, "Range");
                 if (range != NULL) {
-                    int pos = php_buddel_strpos(range, "bytes=", 0);
+                    int pos = php_can_strpos(range, "bytes=", 0);
                     if (FAILURE != pos) {
                         int part_len =  strlen(range) - 6;
-                        char * part = php_buddel_substr(range, 6, part_len);
+                        char * part = php_can_substr(range, 6, part_len);
                         if (part != NULL) {
                             char start[part_len], end[part_len];
                             int is_end = 0, i, y = 0;
@@ -1078,7 +1078,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
                         char *chunk;
                         while(-1 != php_stream_seek(stream, pos, SEEK_SET )) {
                             if (pos == range_from) {
-                                r->status = PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENDING;
+                                r->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENDING;
                                 r->response_len = 0;
                                 evhttp_send_reply_start(r->req, r->response_status, NULL);
                             }
@@ -1105,7 +1105,7 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
             }
         }
     }
-    r->status = PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENT;
+    r->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
     
     efree(etag);
     php_stream_close(stream);
@@ -1115,15 +1115,15 @@ static PHP_METHOD(BuddelServerRequest, sendFile)
 }
 
 static zend_function_entry server_request_methods[] = {
-    PHP_ME(BuddelServerRequest, __construct,          NULL, ZEND_ACC_FINAL | ZEND_ACC_PROTECTED)
-    PHP_ME(BuddelServerRequest, findRequestHeader,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServerRequest, getRequestBody,       NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServerRequest, addResponseHeader,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServerRequest, removeResponseHeader, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServerRequest, setResponseStatus,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServerRequest, redirect,             NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServerRequest, setCookie,            NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(BuddelServerRequest, sendFile,             NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, __construct,          NULL, ZEND_ACC_FINAL | ZEND_ACC_PROTECTED)
+    PHP_ME(CanServerRequest, findRequestHeader,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, getRequestBody,       NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, addResponseHeader,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, removeResponseHeader, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, setResponseStatus,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, redirect,             NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, setCookie,            NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, sendFile,             NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
@@ -1134,39 +1134,39 @@ static void server_request_init(TSRMLS_D)
     server_request_obj_handlers.read_property = read_property;
     server_request_obj_handlers.get_properties = get_properties;
     
-    // class \Buddel\Server\Request
-    PHP_BUDDEL_REGISTER_CLASS(
-        &ce_buddel_server_request,
-        ZEND_NS_NAME(PHP_BUDDEL_SERVER_NS, "Request"),
+    // class \Can\Server\Request
+    PHP_CAN_REGISTER_CLASS(
+        &ce_can_server_request,
+        ZEND_NS_NAME(PHP_CAN_SERVER_NS, "Request"),
         server_request_ctor,
         server_request_methods
     );
 
-    PHP_BUDDEL_REGISTER_CLASS_CONST_LONG(ce_buddel_server_request, "STATUS_NONE",
-        PHP_BUDDEL_SERVER_RESPONSE_STATUS_NONE);
-    PHP_BUDDEL_REGISTER_CLASS_CONST_LONG(ce_buddel_server_request, "STATUS_SENDING",
-        PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENDING);
-    PHP_BUDDEL_REGISTER_CLASS_CONST_LONG(ce_buddel_server_request, "STATUS_SENT",
-        PHP_BUDDEL_SERVER_RESPONSE_STATUS_SENT);
+    PHP_CAN_REGISTER_CLASS_CONST_LONG(ce_can_server_request, "STATUS_NONE",
+        PHP_CAN_SERVER_RESPONSE_STATUS_NONE);
+    PHP_CAN_REGISTER_CLASS_CONST_LONG(ce_can_server_request, "STATUS_SENDING",
+        PHP_CAN_SERVER_RESPONSE_STATUS_SENDING);
+    PHP_CAN_REGISTER_CLASS_CONST_LONG(ce_can_server_request, "STATUS_SENT",
+        PHP_CAN_SERVER_RESPONSE_STATUS_SENT);
 }
 
-PHP_MINIT_FUNCTION(buddel_server_request)
+PHP_MINIT_FUNCTION(can_server_request)
 {
     server_request_init(TSRMLS_C);
     return SUCCESS;
 }
 
-PHP_MSHUTDOWN_FUNCTION(buddel_server_request)
+PHP_MSHUTDOWN_FUNCTION(can_server_request)
 {
     return SUCCESS;
 }
 
-PHP_RINIT_FUNCTION(buddel_server_request)
+PHP_RINIT_FUNCTION(can_server_request)
 {
     return SUCCESS;
 }
 
-PHP_RSHUTDOWN_FUNCTION(buddel_server_request)
+PHP_RSHUTDOWN_FUNCTION(can_server_request)
 {
     return SUCCESS;
 }

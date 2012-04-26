@@ -16,28 +16,28 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef BUDDEL_EXCEPTION_H
-#define BUDDEL_EXCEPTION_H
+#ifndef CAN_EXCEPTION_H
+#define CAN_EXCEPTION_H
 
 #include "php.h"
 #include "zend_exceptions.h"
 
-extern zend_class_entry *ce_buddel_Exception,
+extern zend_class_entry *ce_can_Exception,
     // runtime exceptions
-    *ce_buddel_RuntimeException,
-    *ce_buddel_ServerBindingException,
+    *ce_can_RuntimeException,
+    *ce_can_ServerBindingException,
     // logic exceptions
-    *ce_buddel_LogicException,
-    *ce_buddel_InvalidParametersException,
-    *ce_buddel_InvalidCallbackException,
-    *ce_buddel_InvalidOperationException,
-    *ce_buddel_HTTPError;
+    *ce_can_LogicException,
+    *ce_can_InvalidParametersException,
+    *ce_can_InvalidCallbackException,
+    *ce_can_InvalidOperationException,
+    *ce_can_HTTPError;
 
-int php_buddel_throw_exception(zend_class_entry *ce TSRMLS_DC, char *format, ...);
+int php_can_throw_exception(zend_class_entry *ce TSRMLS_DC, char *format, ...);
 
-PHP_MINIT_FUNCTION(buddel_exception);
-PHP_MSHUTDOWN_FUNCTION(buddel_exception);
-PHP_RINIT_FUNCTION(buddel_exception);
-PHP_RSHUTDOWN_FUNCTION(buddel_exception);
+PHP_MINIT_FUNCTION(can_exception);
+PHP_MSHUTDOWN_FUNCTION(can_exception);
+PHP_RINIT_FUNCTION(can_exception);
+PHP_RSHUTDOWN_FUNCTION(can_exception);
 
-#endif /* BUDDEL_EXCEPTION_H */
+#endif /* CAN_EXCEPTION_H */
