@@ -168,9 +168,9 @@ static PHP_METHOD(CanServerRoute, __construct)
 }
 
 /**
- * Get route
+ * Get URI
  */
-static PHP_METHOD(CanServerRoute, getRoute)
+static PHP_METHOD(CanServerRoute, getUri)
 {
     zend_bool as_regexp = 0;
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
@@ -279,7 +279,7 @@ static PHP_METHOD(CanServerRoute, getHandler)
 
 static zend_function_entry server_route_methods[] = {
     PHP_ME(CanServerRoute, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerRoute, getRoute,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRoute, getUri,      NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, getMethod,   NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, getHandler,  NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
