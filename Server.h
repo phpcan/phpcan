@@ -24,9 +24,12 @@
 #include "ext/date/php_date.h"
 #include "ext/standard/php_array.h"
 #include "ext/standard/php_string.h"
+#include "zend_interfaces.h"
+
 #ifdef HAVE_JSON
 #include "ext/json/php_json.h"
 #endif
+
 #include "ext/standard/url.h"
 #include "ext/pcre/php_pcre.h"
 #include "php_variables.h"
@@ -104,6 +107,7 @@ struct php_can_server_route {
 struct php_can_server_router {
     zend_object std;
     zval refhandle;
+    long pos;
     /**
      * Container for all routes, one domension array
      * where key is route index and value is a route instance

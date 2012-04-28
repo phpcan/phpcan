@@ -46,6 +46,7 @@ static zend_object_value server_router_ctor(zend_class_entry *ce TSRMLS_DC)
 
     router = ecalloc(1, sizeof(*router));
     zend_object_std_init(&router->std, ce TSRMLS_CC);
+    router->pos = -1;
     router->routes = NULL;
     router->method_routes = NULL;
     router->route_methods = NULL;
@@ -197,9 +198,61 @@ static PHP_METHOD(CanServerRouter, addRoute)
     
 }
 
+static PHP_METHOD(CanServerRouter, current)
+{
+    struct php_can_server_router *router = (struct php_can_server_router*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    zval **zroute;
+    if (FAILURE != zend_hash_index_find(Z_ARRVAL_P(router->routes), router->pos, (void **)&zroute)) {
+        RETURN_ZVAL(*zroute, 1, 0);
+    }
+    RETURN_FALSE;
+}
+
+static PHP_METHOD(CanServerRouter, key)
+{
+    struct php_can_server_router *router = (struct php_can_server_router*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    RETURN_LONG(router->pos);
+}
+
+static PHP_METHOD(CanServerRouter, next)
+{
+    struct php_can_server_router *router = (struct php_can_server_router*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    router->pos++;
+}
+
+static PHP_METHOD(CanServerRouter, rewind)
+{
+    struct php_can_server_router *router = (struct php_can_server_router*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    router->pos = 0;
+}
+
+static PHP_METHOD(CanServerRouter, valid)
+{
+    struct php_can_server_router *router = (struct php_can_server_router*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    if (router->pos > zend_hash_num_elements(Z_ARRVAL_P(router->routes)) - 1) {
+        RETURN_FALSE;
+    }    
+    RETURN_TRUE;
+}
+
 static zend_function_entry server_router_methods[] = {
     PHP_ME(CanServerRouter, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRouter, addRoute,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRouter, current,     NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRouter, key,         NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRouter, next,        NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRouter, rewind,      NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRouter, valid,       NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
@@ -208,13 +261,14 @@ static void server_router_init(TSRMLS_D)
     memcpy(&server_router_obj_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
     server_router_obj_handlers.clone_obj = NULL;
 
-    // class \Can\Server\Router
+    // class \Can\Server\Router implements Iterator
     PHP_CAN_REGISTER_CLASS(
         &ce_can_server_router,
         ZEND_NS_NAME(PHP_CAN_SERVER_NS, "Router"),
         server_router_ctor,
         server_router_methods
     );
+    zend_class_implements(ce_can_server_router TSRMLS_CC, 1, zend_ce_iterator);
 }
 
 PHP_MINIT_FUNCTION(can_server_router)
