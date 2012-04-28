@@ -489,11 +489,11 @@ static PHP_METHOD(CanServer, __construct)
     zval *zlogfile = NULL;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, num_args TSRMLS_CC,
-            "sl|sr", &addr, &addr_len, &port, &logformat, &logformat_len, &zlogfile)) {
+            "sl|sz", &addr, &addr_len, &port, &logformat, &logformat_len, &zlogfile)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(string $ip, integer $port[, string $log_format[, resource $log_handler]])",
+            "%s%s%s(string $ip, integer $port[, string $log_format[, string $log_handler]])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
@@ -542,6 +542,9 @@ static PHP_METHOD(CanServer, __construct)
         server->logformat_len = logformat_len;
     }
     if (zlogfile != NULL) {
+        if (Z_REFCOUNT_P(zlogfile) == 1) {
+            zval_add_ref(&zlogfile);
+        }
         php_stream_from_zval_no_verify(server->logfile, &zlogfile);
     }
     if (logformat_len > 0) {
