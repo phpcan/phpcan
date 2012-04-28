@@ -1,14 +1,14 @@
 .. _php-can-server:
 
-============
-Server API
-============
+===================
+``\Can\Server`` API
+===================
 
 .. php:namespace:: Can
 
 .. php:class:: Server
  
-   Server class
+   HTTP Server class.
  
 .. php:method:: __construct(string $ip, int $port, string $log_format = "", resource $log_handler = STDOUT)
  
@@ -67,7 +67,7 @@ Example:
  
   Starts the server.
   
-  :param Router $router: :php:class:`Router` instance.
+  :param Router $router: Instance of :php:class:`Router`.
   :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
  
 .. php:method:: stop()
@@ -75,80 +75,3 @@ Example:
   Stops the server.
   
   :throws: * :php:class:`InvalidOperationException` If server is not running.
-
-============
-Router API
-============
-
-.. php:namespace:: Can\Server
-
-.. php:class:: Router
-
-   Router class
-    
-.. php:method:: __construct(array $routes)
-
-   Constructor. Instantiates new Server router.
-   
-   :param array $routes: array where each element is an instance of :php:class:`Route`.
-   
-   :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
-   
-.. php:method:: addRoute(Route $route)
-
-   Adds new route to the router.
-   
-   :param Route $route: Instance of :php:class:`Route` to add.
-   
-   :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
-   
-=========
-Route API
-=========
-
-.. php:namespace:: Can\Server
-
-.. php:class:: Route
-
-   Route class
-
-.. php:const:: METHOD_GET
-.. php:const:: METHOD_POST
-.. php:const:: METHOD_PUT
-.. php:const:: METHOD_DELETE
-.. php:const:: METHOD_HEAD
-.. php:const:: METHOD_OPTIONS
-.. php:const:: METHOD_TRACE
-.. php:const:: METHOD_CONNECT
-.. php:const:: METHOD_PATCH
-   
-.. php:method:: __construct(string $uri, callable $handler, int $methods = Route::METHOD_GET)
-
-    Constructor. Instantiates new Server route.
-
-    :param string $uri: Static or dynamic URI path.
-    :param callable $handler: Request handler.
-    :param int $methods: HTTP request methods bitmask this route associated with, default Route::METHOD_GET.
-    :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
-    
-.. php:method:: getUri(bool $as_regexp = false)
-
-    Get URI path associated with this Route instance.
-    
-    :param bool $as_regexp: If set to ``true``, return value is a valid PCRE representation of the URI path - can be used as Nginx location definiton. (Only for dynamic routes)
-    :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
-    :returns: string
-    
-.. php:method:: getMethod(bool $as_regexp = false)
-
-    Get HTTP request method associated with this Route instance.
-    
-    :param bool $as_regexp: If set to ``true``, return value is a valid PCRE representation of the method(s).
-    :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
-    :returns: string
-    
-.. php:method:: getHandler()
-
-    Get request handler associated with this Route instance.
-    
-    :returns: callable

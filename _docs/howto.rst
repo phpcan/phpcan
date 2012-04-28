@@ -9,6 +9,7 @@ Installation
 
 .. code-block:: bash
 
+    $ /path/to/phpize
     $ ./configure --with-libevent=/path/to/libevent --with-php-config=/path/to/php-config
     $ make
     $ make install
@@ -43,11 +44,11 @@ Mandatory Hello World example:
 
 This is it. Run this script, visit http://localhost:4567/hello and you will see "Hello, World!" in your browser. Here is how it works:
 
-The class ``\Can\Server\Route`` binds a request handler to an URL path. In this case, we link the ``/hello`` URL to the closure as request handler,
-add this route to the ``\Can\Server\Router`` instance and start the server with this router instance. You can define as many routes as you want. 
+The class :php:class:`Route` binds a request handler to an URL path. In this case, we link the ``/hello`` URL to the closure as request handler,
+add this route to the :php:class:`Router` instance and start the server with this router instance. You can define as many routes as you want. 
 Whenever a browser requests an URL, the associated handler is called and the return value is sent back to the browser. Its as simple as that.
 
-The ``\Can\Server`` instance is instantiated with IP address and port number as parameters, and ``\Can\Server::start()`` starts the server. 
+The :php:class:`Server` instance is instantiated with IP address and port number as parameters, and :php:meth:`Server::start()` starts the server. 
 It runs on `localhost` port 4567 and serves requests until you hit ``Control-c``. 
 
 Of course this is a very simple example, but it shows the basic concept of how HTTP services are built with Can. Continue reading and you'll see what else is possible.
@@ -143,7 +144,7 @@ for the same route.
 In this example the ``/login`` URL is linked to two distinct callbacks, one for GET requests and another for 
 POST requests. The first one displays a HTML form to the user. The second callback is invoked on a form 
 submission and checks the login credentials the user entered into the form. The submited post data is available
-in the ``\Can\Server\Request::$post`` container.
+in the :php:attr:`Request::$post` container.
 
 Routing Static Files
 --------------------
