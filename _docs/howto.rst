@@ -273,7 +273,9 @@ Example:
             function(Request $request) {
                 switch ($request->method) {
                     case 'POST':
-                        return print_r($request, true);
+                        return '<pre>' . PHP_EOL . 
+                               'post data: ' . print_r($request->post, true) . PHP_EOL .
+                               'uploaded files: ' . print_r($request->files, true) . PHP_EOL;
                         break;
                     default:
                         return '
@@ -309,7 +311,7 @@ Run this script, visit http://localhost:4567/upload, fill out and submit the for
     (
         [0] => Array
             (
-                [name] => file
+                [name] => file1
                 [filename] => image1.jpg
                 [filesize] => 32135
                 [tmp_name] => /tmp/phpmcant7nl3iP
@@ -317,7 +319,7 @@ Run this script, visit http://localhost:4567/upload, fill out and submit the for
 
         [1] => Array
             (
-                [name] => file
+                [name] => file2
                 [filename] => image2.jpg
                 [filesize] => 5643
                 [tmp_name] => /tmp/phpcanrHv051
