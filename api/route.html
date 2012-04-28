@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>\Can\Server\Route API &mdash; PHP Can 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="PHP Can 0.1.0 documentation" href="../index.html" />
+    <link rel="next" title="\Can\Server\Router API" href="router.html" />
+    <link rel="prev" title="\Can\Server API" href="server.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../php-modindex.html" title="PHP Namespace Index"
+             >namespaces</a> |</li>
+        <li class="right" >
+          <a href="router.html" title="\Can\Server\Router API"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="server.html" title="\Can\Server API"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="server.html"
+                        title="previous chapter"><tt class="docutils literal"><span class="pre">\Can\Server</span></tt> API</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="router.html"
+                        title="next chapter"><tt class="docutils literal docutils literal"><span class="pre">\Can\Server\Router</span></tt> API</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/api/route.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="namespace-Can\Server">
+<span id="can-server-route-api"></span><span id="php-can-route"></span><h1><tt class="docutils literal"><span class="pre">\Can\Server\Route</span></tt> API<a class="headerlink" href="#namespace-Can\Server" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="Can\Server\Route">
+<em class="property">class </em><tt class="descname">Route</tt><a class="headerlink" href="#Can\Server\Route" title="Permalink to this definition">¶</a></dt>
+<dd><p>Route class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Route::__construct">
+<tt class="descclassname">Can\Server\Route::</tt><tt class="descname">__construct</tt><big>(</big><em>string $uri</em>, <em>callable $handler</em>, <em>int $methods = Route::METHOD_GET</em><big>)</big><a class="headerlink" href="#Can\Server\Route::__construct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor. Instantiates new Server route.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$uri</strong> (<em>string</em>) &#8211; Static or dynamic URI path.</li>
+<li><strong>$handler</strong> (<em>callable</em>) &#8211; Request handler - any valid PHP callback</li>
+<li><strong>$methods</strong> (<em>int</em>) &#8211; HTTP request methods bitmask this route associated with, default Route::METHOD_GET.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters will be passed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The request handler must accepting <a class="reference internal" href="request.html#Can\Server\Request" title="Can\Server\Request"><tt class="xref php php-class docutils literal"><span class="pre">Request</span></tt></a> instance as first parameter and associative arguments array as second parameter
+in which you will find values of the wildcards defined within you URI path. See <a class="reference internal" href="../howto.html#tutorial-routing"><em>Request routing</em></a> for detailed information.</p>
+</dd></dl>
+
+<p>Example:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">\Can\Server\Request</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Route</span><span class="p">;</span>
+
+<span class="nv">$route</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span>
+    <span class="s1">&#39;/hello/&lt;name&gt;&#39;</span><span class="p">,</span>
+    <span class="k">function</span> <span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="k">array</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="s1">&#39;Hello, &#39;</span> <span class="o">.</span> <span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">.</span> <span class="s1">&#39;!&#39;</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span>
+<span class="p">);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="Can\Server\Route::getUri">
+<tt class="descclassname">Can\Server\Route::</tt><tt class="descname">getUri</tt><big>(</big><em>bool $as_regexp = false</em><big>)</big><a class="headerlink" href="#Can\Server\Route::getUri" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get URI path associated with this Route instance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$as_regexp</strong> (<em>bool</em>) &#8211; If set to <tt class="docutils literal"><span class="pre">true</span></tt>, return value is a valid PCRE representation of the URI path.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters will be passed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">string</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Route::getMethod">
+<tt class="descclassname">Can\Server\Route::</tt><tt class="descname">getMethod</tt><big>(</big><em>bool $as_regexp = false</em><big>)</big><a class="headerlink" href="#Can\Server\Route::getMethod" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get HTTP request method associated with this Route instance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$as_regexp</strong> (<em>bool</em>) &#8211; If set to <tt class="docutils literal"><span class="pre">true</span></tt>, return value is a valid PCRE representation of the method(s).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters will be passed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">string</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Route::getHandler">
+<tt class="descclassname">Can\Server\Route::</tt><tt class="descname">getHandler</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server\Route::getHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get request handler associated with this Route instance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">callable</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_GET">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_GET</tt><a class="headerlink" href="#Can\Server\Route::METHOD_GET" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_POST">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_POST</tt><a class="headerlink" href="#Can\Server\Route::METHOD_POST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_PUT">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_PUT</tt><a class="headerlink" href="#Can\Server\Route::METHOD_PUT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_DELETE">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_DELETE</tt><a class="headerlink" href="#Can\Server\Route::METHOD_DELETE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_HEAD">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_HEAD</tt><a class="headerlink" href="#Can\Server\Route::METHOD_HEAD" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_OPTIONS">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_OPTIONS</tt><a class="headerlink" href="#Can\Server\Route::METHOD_OPTIONS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_TRACE">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_TRACE</tt><a class="headerlink" href="#Can\Server\Route::METHOD_TRACE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_CONNECT">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_CONNECT</tt><a class="headerlink" href="#Can\Server\Route::METHOD_CONNECT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_PATCH">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_PATCH</tt><a class="headerlink" href="#Can\Server\Route::METHOD_PATCH" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../php-modindex.html" title="PHP Namespace Index"
+             >namespaces</a> |</li>
+        <li class="right" >
+          <a href="router.html" title="\Can\Server\Router API"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="server.html" title="\Can\Server API"
+             >previous</a> |</li>
+        <li><a href="../index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
+      Last updated on Apr 28, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

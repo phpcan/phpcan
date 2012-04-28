@@ -1,0 +1,238 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>\Can\Server API &mdash; PHP Can 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../static/jquery.js"></script>
+    <script type="text/javascript" src="../static/underscore.js"></script>
+    <script type="text/javascript" src="../static/doctools.js"></script>
+    <link rel="top" title="PHP Can 0.1.0 documentation" href="../index.html" />
+    <link rel="next" title="\Can\Server\Route API" href="route.html" />
+    <link rel="prev" title="PHP Can HowTo" href="../howto.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../php-modindex.html" title="PHP Namespace Index"
+             >namespaces</a> |</li>
+        <li class="right" >
+          <a href="route.html" title="\Can\Server\Route API"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../howto.html" title="PHP Can HowTo"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../howto.html"
+                        title="previous chapter">PHP Can HowTo</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="route.html"
+                        title="next chapter"><tt class="docutils literal docutils literal docutils literal"><span class="pre">\Can\Server\Route</span></tt> API</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../sources/api/server.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="namespace-Can">
+<span id="can-server-api"></span><span id="php-can-server"></span><h1><tt class="docutils literal"><span class="pre">\Can\Server</span></tt> API<a class="headerlink" href="#namespace-Can" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="Can\Server">
+<em class="property">class </em><tt class="descname">Server</tt><a class="headerlink" href="#Can\Server" title="Permalink to this definition">¶</a></dt>
+<dd><p>HTTP Server class.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server::__construct">
+<tt class="descclassname">Can\Server::</tt><tt class="descname">__construct</tt><big>(</big><em>string $ip</em>, <em>int $port</em>, <em>string $log_format = &quot;&quot;</em>, <em>resource $log_handler = STDOUT</em><big>)</big><a class="headerlink" href="#Can\Server::__construct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor. Instantiates new HTTP server.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$ip</strong> (<em>string</em>) &#8211; IP to bind server to.</li>
+<li><strong>$port</strong> (<em>int</em>) &#8211; The port to listen on.</li>
+<li><strong>$log_format</strong> (<em>string</em>) &#8211; The log format string (ELF).</li>
+<li><strong>$log_handler</strong> (<em>resource</em>) &#8211; File descriptor for the logging, used only if $log_format defined, default STDOUT.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters will be passed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">ServerBindingException</span></tt> If binding of the server to given IP and port fails.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>Supported fields for ELF:</dt>
+<dd><ul class="first last simple">
+<li><tt class="docutils literal"><span class="pre">cs-uri</span></tt> - client-to-server requested URI</li>
+<li><tt class="docutils literal"><span class="pre">cs-query</span></tt> - client-to-server query string</li>
+<li><tt class="docutils literal"><span class="pre">c-ip</span></tt> - client IP address</li>
+<li><tt class="docutils literal"><span class="pre">c-port</span></tt> - client port number</li>
+<li><tt class="docutils literal"><span class="pre">cs-method</span></tt> - client-to-server HTTP Method</li>
+<li><tt class="docutils literal"><span class="pre">sc-status</span></tt> - server-to-client HTTP Status code in the response</li>
+<li><tt class="docutils literal"><span class="pre">sc-bytes</span></tt> - number of bytes sent</li>
+<li><tt class="docutils literal"><span class="pre">time</span></tt> - time in 24-hour format, the machine&#8217;s timezone</li>
+<li><tt class="docutils literal"><span class="pre">date</span></tt> - date in yyyy-mm-dd format</li>
+<li><tt class="docutils literal"><span class="pre">time-taken</span></tt> - Time taken for transaction to complete in seconds</li>
+<li><tt class="docutils literal"><span class="pre">x-memusage</span></tt> - memory usage</li>
+<li><tt class="docutils literal"><span class="pre">x-error</span></tt> - detailed error information if any</li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Example:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">\Can\Server</span><span class="p">;</span>
+
+<span class="c1">// Bind server to all available network interfaces on port 8080 without logging</span>
+<span class="nv">$server</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Server</span><span class="p">(</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span> <span class="mi">8080</span><span class="p">);</span>
+
+<span class="c1">// Bind server to all available network interfaces on port 8080</span>
+<span class="c1">// with logging to standard output with defined format</span>
+<span class="nv">$server</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Server</span><span class="p">(</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span>  <span class="mi">8080</span><span class="p">,</span>
+    <span class="s2">&quot;x-reqnum time c-ip cs-method cs-uri sc-status &quot;</span> <span class="o">.</span>
+        <span class="s2">&quot;sc-bytes time-taken x-memusage x-error</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="p">);</span>
+
+<span class="c1">// Bind server to all available network interfaces on port 8080</span>
+<span class="c1">// with logging to defined logfile and log format</span>
+<span class="nv">$server</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Server</span><span class="p">(</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span>  <span class="mi">8080</span><span class="p">,</span>
+    <span class="s2">&quot;x-reqnum time c-ip cs-method cs-uri sc-status &quot;</span> <span class="o">.</span>
+        <span class="s2">&quot;sc-bytes time-taken x-memusage x-error</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="nb">fopen</span><span class="p">(</span><span class="s1">&#39;/tmp/phpcan.log&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="Can\Server::start">
+<tt class="descclassname">Can\Server::</tt><tt class="descname">start</tt><big>(</big><em>Router $router</em><big>)</big><a class="headerlink" href="#Can\Server::start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts the server.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$router</strong> (<em>Router</em>) &#8211; Instance of <tt class="xref php php-class docutils literal"><span class="pre">Router</span></tt>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters will be passed.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server::stop">
+<tt class="descclassname">Can\Server::</tt><tt class="descname">stop</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server::stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stops the server.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidOperationException</span></tt> If server is not running.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../php-modindex.html" title="PHP Namespace Index"
+             >namespaces</a> |</li>
+        <li class="right" >
+          <a href="route.html" title="\Can\Server\Route API"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../howto.html" title="PHP Can HowTo"
+             >previous</a> |</li>
+        <li><a href="../index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
+      Last updated on Apr 28, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

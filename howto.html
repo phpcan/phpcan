@@ -1,0 +1,341 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PHP Can HowTo &mdash; PHP Can 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="static/jquery.js"></script>
+    <script type="text/javascript" src="static/underscore.js"></script>
+    <script type="text/javascript" src="static/doctools.js"></script>
+    <link rel="top" title="PHP Can 0.1.0 documentation" href="index.html" />
+    <link rel="next" title="\Can\Server API" href="api/server.html" />
+    <link rel="prev" title="PHP Can Web Framework" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="php-modindex.html" title="PHP Namespace Index"
+             >namespaces</a> |</li>
+        <li class="right" >
+          <a href="api/server.html" title="\Can\Server API"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="PHP Can Web Framework"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PHP Can HowTo</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#request-routing">Request routing</a></li>
+<li><a class="reference internal" href="#dynamic-routes">Dynamic Routes</a></li>
+<li><a class="reference internal" href="#http-request-methods">HTTP Request Methods</a></li>
+<li><a class="reference internal" href="#routing-static-files">Routing Static Files</a></li>
+<li><a class="reference internal" href="#forced-download">Forced Download</a></li>
+<li><a class="reference internal" href="#generating-content">Generating content</a></li>
+<li><a class="reference internal" href="#to-be-continued">To be continued...</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">PHP Can Web Framework</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="api/server.html"
+                        title="next chapter"><tt class="docutils literal docutils literal docutils literal"><span class="pre">\Can\Server</span></tt> API</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="sources/howto.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="php-can-howto">
+<h1>PHP Can HowTo<a class="headerlink" href="#php-can-howto" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installation">
+<span id="id1"></span><h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>/path/to/phpize
+<span class="nv">$ </span>./configure --with-libevent<span class="o">=</span>/path/to/libevent --with-php-config<span class="o">=</span>/path/to/php-config
+<span class="nv">$ </span>make
+<span class="nv">$ </span>make install
+</pre></div>
+</div>
+<p>Add &#8220;extension=can.so&#8221; to your php.ini file to load Can extension.</p>
+<p id="tutorial-quickstart">Mandatory Hello World example:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">\Can\Server</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Router</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Route</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Request</span><span class="p">;</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/hello&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s1">&#39;Hello, World!&#39;</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="p">(</span><span class="k">new</span> <span class="nx">Server</span><span class="p">(</span><span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="mi">4567</span><span class="p">))</span><span class="o">-&gt;</span><span class="na">start</span><span class="p">(</span><span class="nv">$router</span><span class="p">);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<p>This is it. Run this script, visit <a class="reference external" href="http://localhost:4567/hello">http://localhost:4567/hello</a> and you will see &#8220;Hello, World!&#8221; in your browser. Here is how it works:</p>
+<p>The class <tt class="xref php php-class docutils literal"><span class="pre">Route</span></tt> binds a request handler to an URL path. In this case, we link the <tt class="docutils literal"><span class="pre">/hello</span></tt> URL to the closure as request handler,
+add this route to the <tt class="xref php php-class docutils literal"><span class="pre">Router</span></tt> instance and start the server with this router instance. You can define as many routes as you want.
+Whenever a browser requests an URL, the associated handler is called and the return value is sent back to the browser. Its as simple as that.</p>
+<p>The <tt class="xref php php-class docutils literal"><span class="pre">Server</span></tt> instance is instantiated with IP address and port number as parameters, and <tt class="xref php php-meth docutils literal"><span class="pre">Server::start()</span></tt> starts the server.
+It runs on <cite>localhost</cite> port 4567 and serves requests until you hit <tt class="docutils literal"><span class="pre">Control-c</span></tt>.</p>
+<p>Of course this is a very simple example, but it shows the basic concept of how HTTP services are built with Can. Continue reading and you&#8217;ll see what else is possible.</p>
+</div>
+<div class="section" id="request-routing">
+<span id="tutorial-routing"></span><h2>Request routing<a class="headerlink" href="#request-routing" title="Permalink to this headline">¶</a></h2>
+<p>The Router distinguishes between two basic types of routes: static routes (e.g. <tt class="docutils literal"><span class="pre">/hello/world</span></tt>) and dynamic routes (e.g. <tt class="docutils literal"><span class="pre">/hello/&lt;name&gt;</span></tt>).
+A route that contains one or more wildcards it is considered dynamic. All other routes are static.
+The simplest form of a wildcard consists of an identifier enclosed in angle brackets (e.g. <tt class="docutils literal"><span class="pre">&lt;name&gt;</span></tt>). The identifier should be unique for a given route.
+Each wildcard matches one or more characters, but stops at the first slash (/). This equals a regular expression of [^/]+ and ensures
+that only one path segment is matched and routes with more than one wildcard stay unambiguous.</p>
+</div>
+<div class="section" id="dynamic-routes">
+<span id="tutorial-dynamic-routes"></span><h2>Dynamic Routes<a class="headerlink" href="#dynamic-routes" title="Permalink to this headline">¶</a></h2>
+<p>Routes that contain wildcards are called dynamic routes (as opposed to static routes) and match more than one URL at the same time.
+For example, the route <tt class="docutils literal"><span class="pre">/hello/&lt;name&gt;</span></tt> accepts requests for <tt class="docutils literal"><span class="pre">/hello/alice</span></tt> as well as <tt class="docutils literal"><span class="pre">/hello/bob</span></tt>, but not for <tt class="docutils literal"><span class="pre">/hello</span></tt>, <tt class="docutils literal"><span class="pre">/hello/</span></tt> or <tt class="docutils literal"><span class="pre">/hello/mr/smith</span></tt>.</p>
+<p>Filters are used to define more specific wildcards, and/or transform the covered part of the URL before it is passed to the callback.
+A filtered wildcard is declared as <tt class="docutils literal"><span class="pre">&lt;name:filter&gt;</span></tt> or <tt class="docutils literal"><span class="pre">&lt;name:filter:config&gt;</span></tt>. The syntax for the optional config part depends
+on the filter used.</p>
+<p>The following filters are implemented by default and more may be added:</p>
+<ul class="simple">
+<li><strong>:int</strong> matches (signed) digits only and converts the value to integer.</li>
+<li><strong>:float</strong> similar to :int but for decimal numbers.</li>
+<li><strong>:path</strong> matches all characters including the slash character in a non-greedy way and can be used to match more than one path segment.</li>
+<li><strong>:re</strong> allows you to specify a custom regular expression in the config field. The matched value is not modified.</li>
+</ul>
+<p>All wildcards passes the covered parts of the URL as associative array as second argument to the request callback. You can use them
+right away and implement RESTful, nice-looking and meaningful URLs with ease. Here are some other examples along with the URLs they&#8217;d match:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span>
+        <span class="s1">&#39;/wiki/&lt;file:path&gt;&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">file_get_contents</span><span class="p">(</span><span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">]);</span>
+        <span class="p">}</span>
+    <span class="p">),</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span>
+        <span class="s1">&#39;/user/&lt;id:int&gt;&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">User</span><span class="o">::</span><span class="na">get</span><span class="p">(</span><span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]);</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="http-request-methods">
+<h2>HTTP Request Methods<a class="headerlink" href="#http-request-methods" title="Permalink to this headline">¶</a></h2>
+<p>The HTTP protocol defines several request methods for different tasks. GET is the default for all routes
+with no other method specified. These routes will match GET requests only. To handle other methods such as POST, PUT or DELETE,
+add an appropriate class constant as 3. parameter to the Route constructor. You can use bitwise operators to combine multiple methods
+for the same route.</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/login&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="s1">&#39;&lt;form method=&quot;POST&quot;&gt;</span>
+<span class="s1">                    Username: &lt;input name=&quot;name&quot; type=&quot;text&quot; /&gt;&lt;br /&gt;</span>
+<span class="s1">                    Password: &lt;input name=&quot;pass&quot; type=&quot;password&quot; /&gt;&lt;/br /&gt;</span>
+<span class="s1">                    &lt;input name=&quot;submit&quot; type=&quot;submit&quot; value=&quot;Log in&quot; /&gt;</span>
+<span class="s1">                    &lt;/form&gt;&#39;</span><span class="p">;</span>
+        <span class="p">},</span> <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span>
+    <span class="p">),</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/login&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nx">login</span><span class="p">(</span><span class="nv">$request</span><span class="o">-&gt;</span><span class="na">post</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span> <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">post</span><span class="p">[</span><span class="s1">&#39;pass&#39;</span><span class="p">]))</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="s1">&#39;&lt;h2&gt;You\&#39;re ligged in!&lt;/h2&gt;&#39;</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">return</span> <span class="s1">&#39;&lt;h2&gt;Login failed&lt;/h2&gt;&#39;</span><span class="p">;</span>
+        <span class="p">},</span> <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_POST</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<p>In this example the <tt class="docutils literal"><span class="pre">/login</span></tt> URL is linked to two distinct callbacks, one for GET requests and another for
+POST requests. The first one displays a HTML form to the user. The second callback is invoked on a form
+submission and checks the login credentials the user entered into the form. The submited post data is available
+in the <tt class="xref php php-attr docutils literal"><span class="pre">Request::$post</span></tt> container.</p>
+</div>
+<div class="section" id="routing-static-files">
+<h2>Routing Static Files<a class="headerlink" href="#routing-static-files" title="Permalink to this headline">¶</a></h2>
+<p>Static files such as images or CSS files are not served automatically. You have to add a route and a callback to
+control which files get served and where to find them:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/static/&lt;filename&gt;&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">sendFile</span><span class="p">(</span><span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="s1">&#39;/path/to/your/static/files&#39;</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<p>This example is limited to files directly within the <tt class="docutils literal"><span class="pre">/path/to/your/static/files</span></tt> directory because the <tt class="docutils literal"><span class="pre">&lt;filename&gt;</span></tt>
+wildcard won&#8217;t match a path with a slash in it. To serve files in subdirectories, change the wildcard to use the <cite>path</cite> filter:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/static/&lt;filename:path&gt;&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">sendFile</span><span class="p">(</span><span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="s1">&#39;/path/to/your/static/files&#39;</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">\Can\Server\Request::sendFile</span></tt> method is a helper to serve files in a safe and convenient way.
+It automatically guesses a mime-type, adds a <tt class="docutils literal"><span class="pre">Last-Modified</span></tt>  header, generate and add ETag header, restricts paths
+to a root directory for security reasons and generates appropriate error responses (401 on permission errors, 404 on missing files).
+It supports the <tt class="docutils literal"><span class="pre">If-Modified-Since</span></tt> and <tt class="docutils literal"><span class="pre">If-None-Match</span></tt> headers and eventually generates a 304 Not Modified response.
+You can pass a custom MIME type as 3. parameter to disable guessing:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/static/&lt;filename:re:.*\.png&gt;&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">sendFile</span><span class="p">(</span><span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;/path/to/your/static/files&#39;</span><span class="p">,</span> <span class="s1">&#39;image/png&#39;</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="forced-download">
+<h2>Forced Download<a class="headerlink" href="#forced-download" title="Permalink to this headline">¶</a></h2>
+<p>Most browsers try to open downloaded files if the MIME type is known and assigned to an application (e.g. PDF files).
+If this is not what you want, you can force a download dialog by setting 4. parameter to true:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/downloads/&lt;filename:re:.*\.pdf&gt;&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">sendFile</span><span class="p">(</span><span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;/path/to/your/static/files&#39;</span><span class="p">,</span> <span class="s1">&#39;application/pdf&#39;</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="generating-content">
+<span id="tutorial-output"></span><h2>Generating content<a class="headerlink" href="#generating-content" title="Permalink to this headline">¶</a></h2>
+<p>Can supports the following range of types you can return from your request handler:</p>
+<dl class="docutils">
+<dt>Strings</dt>
+<dd>Can returns strings as a whole and adds a <tt class="docutils literal"><span class="pre">Content-Length</span></tt> header based on the string length.</dd>
+<dt>Empty Strings or <tt class="docutils literal"><span class="pre">Null</span></tt>:</dt>
+<dd>These produce an empty output with the <tt class="docutils literal"><span class="pre">Content-Length</span></tt> header set to 0.</dd>
+<dt>Objects</dt>
+<dd>If returned object implements JsonSerializable interface, return value of the object::jsonSerialize() will
+be set as output and <tt class="docutils literal"><span class="pre">Content-Type</span></tt> header will contain <tt class="docutils literal"><span class="pre">application/json</span></tt>.</dd>
+</dl>
+<p>All other types will produce 500 Internal Server Error</p>
+</div>
+<div class="section" id="to-be-continued">
+<h2>To be continued...<a class="headerlink" href="#to-be-continued" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="php-modindex.html" title="PHP Namespace Index"
+             >namespaces</a> |</li>
+        <li class="right" >
+          <a href="api/server.html" title="\Can\Server API"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="PHP Can Web Framework"
+             >previous</a> |</li>
+        <li><a href="index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
+      Last updated on Apr 28, 2012.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
