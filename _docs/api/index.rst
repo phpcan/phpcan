@@ -43,17 +43,17 @@ Example:
     
     use \Can\Server;
     
-    // Bind server to all available network interface on port 8080 without logging
+    // Bind server to all available network interfaces on port 8080 without logging
     $server = new Server('0.0.0.0', 8080);
     
-    // Bind server to all available network interface on port 8080
+    // Bind server to all available network interfaces on port 8080
     // with logging to standard output with defined format
     $server = new Server('0.0.0.0',  8080, 
         "x-reqnum time c-ip cs-method cs-uri sc-status " . 
             "sc-bytes time-taken x-memusage x-error\n"
     );
 
-    // Bind server to all available network interface on port 8080
+    // Bind server to all available network interfaces on port 8080
     // with logging to defined logfile and log format
     $server = new Server('0.0.0.0',  8080, 
         "x-reqnum time c-ip cs-method cs-uri sc-status " . 
