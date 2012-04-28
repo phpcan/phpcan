@@ -106,7 +106,7 @@ struct php_can_server_router {
     zval refhandle;
     /**
      * Container for all routes, one domension array
-     * where key is route index and value - route instance
+     * where key is route index and value is a route instance
      */
     zval *routes;
     /**
@@ -184,7 +184,7 @@ struct php_can_server_logentry {
     if (php_can_strpos(server->logformat, "c-port", 0) != FAILURE) \
         add_assoc_long(map, "c-port", logentry->remote_port); \
     if (php_can_strpos(server->logformat, "cs-method", 0) != FAILURE) \
-        add_assoc_string(map, "cs-method", typeToMethod(logentry->request_type), 1); \
+        add_assoc_string(map, "cs-method", php_can_method_name(logentry->request_type), 1); \
     if (php_can_strpos(server->logformat, "cs-uri", 0) != FAILURE) \
         add_assoc_string(map, "cs-uri", logentry->request_uri, 1); \
     if (php_can_strpos(server->logformat, "sc-status", 0) != FAILURE) \

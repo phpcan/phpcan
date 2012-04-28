@@ -22,6 +22,8 @@
 #include "zend.h"
 #include "zend_interfaces.h"
 
+#include <evhttp.h>
+
 extern zend_module_entry can_module_entry;
 #define can_module_ptr &can_module_entry 
 #define phpext_can_ptr can_module_ptr
@@ -39,6 +41,7 @@ PHP_MINFO_FUNCTION(can);
 
 int php_can_strpos(char *haystack, char *needle, int offset);
 char * php_can_substr(char *str, int f, int l);
+char * php_can_method_name(int type);
 zval * php_can_strtr_array(char *str, int slen, HashTable *hash);
 
 #ifdef PHP_WIN32

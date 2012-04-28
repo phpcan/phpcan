@@ -41,15 +41,15 @@ static void server_router_dtor(void *object TSRMLS_DC);
 
 static zend_object_value server_router_ctor(zend_class_entry *ce TSRMLS_DC)
 {
-    struct php_can_server_router *r;
+    struct php_can_server_router *router;
     zend_object_value retval;
 
-    r = ecalloc(1, sizeof(*r));
-    zend_object_std_init(&r->std, ce TSRMLS_CC);
-    r->routes = NULL;
-    r->method_routes = NULL;
-    r->route_methods = NULL;
-    retval.handle = zend_objects_store_put(r,
+    router = ecalloc(1, sizeof(*router));
+    zend_object_std_init(&router->std, ce TSRMLS_CC);
+    router->routes = NULL;
+    router->method_routes = NULL;
+    router->route_methods = NULL;
+    retval.handle = zend_objects_store_put(router,
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_router_dtor,
             NULL TSRMLS_CC);
@@ -59,23 +59,23 @@ static zend_object_value server_router_ctor(zend_class_entry *ce TSRMLS_DC)
 
 static void server_router_dtor(void *object TSRMLS_DC)
 {
-    struct php_can_server_router *r = (struct php_can_server_router*)object;
+    struct php_can_server_router *router = (struct php_can_server_router*)object;
 
-    if (r->routes) {
-        zval_ptr_dtor(&r->routes);
+    if (router->routes) {
+        zval_ptr_dtor(&router->routes);
     }
 
-    if (r->method_routes) {
-        zval_ptr_dtor(&r->method_routes);
+    if (router->method_routes) {
+        zval_ptr_dtor(&router->method_routes);
     }
     
-    if (r->route_methods) {
-        zval_ptr_dtor(&r->route_methods);
+    if (router->route_methods) {
+        zval_ptr_dtor(&router->route_methods);
     }
 
-    zend_objects_store_del_ref(&r->refhandle TSRMLS_CC);
-    zend_object_std_dtor(&r->std TSRMLS_CC);
-    efree(r);
+    zend_objects_store_del_ref(&router->refhandle TSRMLS_CC);
+    zend_object_std_dtor(&router->std TSRMLS_CC);
+    efree(router);
 
 }
 

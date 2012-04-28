@@ -34,22 +34,22 @@ static void server_request_dtor(void *object TSRMLS_DC);
 
 static zend_object_value server_request_ctor(zend_class_entry *ce TSRMLS_DC)
 {
-    struct php_can_server_request *r;
+    struct php_can_server_request *request;
     zend_object_value retval;
 
-    r = ecalloc(1, sizeof(*r));
-    zend_object_std_init(&r->std, ce TSRMLS_CC);
-    r->cookies = NULL;
-    r->get = NULL;
-    r->post = NULL;
-    r->files = NULL;
-    r->status = PHP_CAN_SERVER_RESPONSE_STATUS_NONE;
-    r->uri = NULL;
-    r->query = NULL;
-    r->response_status = 0;
-    r->response_len = 0;
-    r->error = NULL;
-    retval.handle = zend_objects_store_put(r,
+    request = ecalloc(1, sizeof(*request));
+    zend_object_std_init(&request->std, ce TSRMLS_CC);
+    request->cookies = NULL;
+    request->get = NULL;
+    request->post = NULL;
+    request->files = NULL;
+    request->status = PHP_CAN_SERVER_RESPONSE_STATUS_NONE;
+    request->uri = NULL;
+    request->query = NULL;
+    request->response_status = 0;
+    request->response_len = 0;
+    request->error = NULL;
+    retval.handle = zend_objects_store_put(request,
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_request_dtor,
             NULL TSRMLS_CC);
@@ -59,94 +59,58 @@ static zend_object_value server_request_ctor(zend_class_entry *ce TSRMLS_DC)
 
 static void server_request_dtor(void *object TSRMLS_DC)
 {
-    struct php_can_server_request *r = (struct php_can_server_request*)object;
+    struct php_can_server_request *request = (struct php_can_server_request*)object;
 
-    if (r->req) {
-        r->req = NULL;
+    if (request->req) {
+        request->req = NULL;
     }
 
-    if (r->cookies) {
-        zval_ptr_dtor(&r->cookies);
+    if (request->cookies) {
+        zval_ptr_dtor(&request->cookies);
     }
 
-    if (r->get) {
-        zval_ptr_dtor(&r->get);
+    if (request->get) {
+        zval_ptr_dtor(&request->get);
     }
 
-    if (r->post) {
-        zval_ptr_dtor(&r->post);
+    if (request->post) {
+        zval_ptr_dtor(&request->post);
     }
 
-    if (r->files) {
-        zval_ptr_dtor(&r->files);
+    if (request->files) {
+        zval_ptr_dtor(&request->files);
     }
 
-    if (r->uri) {
-        efree(r->uri);
-        r->uri = NULL;
+    if (request->uri) {
+        efree(request->uri);
+        request->uri = NULL;
     }
 
-    if (r->query) {
-        efree(r->query);
-        r->query = NULL;
+    if (request->query) {
+        efree(request->query);
+        request->query = NULL;
     }
     
-    if (r->error) {
-        efree(r->error);
-        r->error = NULL;
+    if (request->error) {
+        efree(request->error);
+        request->error = NULL;
     }
 
-    zend_objects_store_del_ref(&r->refhandle TSRMLS_CC);
-    zend_object_std_dtor(&r->std TSRMLS_CC);
-    efree(r);
-}
-
-static char * typeToMethod(int type)
-{
-    switch (type) {
-        case EVHTTP_REQ_GET:
-            return "GET";
-            break;
-        case EVHTTP_REQ_POST:
-            return "POST";
-            break;
-        case EVHTTP_REQ_HEAD:
-            return "HEAD";
-            break;
-        case EVHTTP_REQ_PUT:
-            return "PUT";
-            break;
-        case EVHTTP_REQ_DELETE:
-            return "DELETE";
-            break;
-        case EVHTTP_REQ_OPTIONS:
-            return "OPTIONS";
-            break;
-        case EVHTTP_REQ_TRACE:
-            return "TRACE";
-            break;
-        case EVHTTP_REQ_CONNECT:
-            return "CONNECT";
-            break;
-        case EVHTTP_REQ_PATCH:
-            return "PATCH";
-            break;
-        default:
-            return "Unknown";
-            break;
-    }
+    zend_objects_store_del_ref(&request->refhandle TSRMLS_CC);
+    zend_object_std_dtor(&request->std TSRMLS_CC);
+    efree(request);
 }
 
 static zval *read_property(zval *object, zval *member, int type, const zend_literal *key TSRMLS_DC)
 {
-    struct php_can_server_request *r;
+    struct php_can_server_request *request;
     zval tmp_member;
     zval *retval;
     zend_object_handlers *std_hnd;
     struct evkeyval *header;
     char * str;
 
-    r = (struct php_can_server_request*)zend_object_store_get_object(object TSRMLS_CC);
+    request = (struct php_can_server_request*)zend_object_store_get_object(object TSRMLS_CC);
 
     if (member->type != IS_STRING) {
         tmp_member = *member;
@@ -159,28 +123,28 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
             && !memcmp(Z_STRVAL_P(member), "method", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        ZVAL_STRING(retval, typeToMethod(r->req->type), 1);
+        ZVAL_STRING(retval, php_can_method_name(request->req->type), 1);
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else if (Z_STRLEN_P(member) == (sizeof("uri") - 1)
             && !memcmp(Z_STRVAL_P(member), "uri", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        ZVAL_STRING(retval, r->uri != NULL ? r->uri : "", 1);
+        ZVAL_STRING(retval, request->uri != NULL ? request->uri : "", 1);
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else if (Z_STRLEN_P(member) == (sizeof("query") - 1)
             && !memcmp(Z_STRVAL_P(member), "query", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        ZVAL_STRING(retval, r->query != NULL ? r->query : "", 1);
+        ZVAL_STRING(retval, request->query != NULL ? request->query : "", 1);
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else if (Z_STRLEN_P(member) == (sizeof("protocol") - 1)
             && !memcmp(Z_STRVAL_P(member), "protocol", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        spprintf(&str, 0, "HTTP/%d.%d", r->req->major, r->req->minor);
+        spprintf(&str, 0, "HTTP/%d.%d", request->req->major, request->req->minor);
         ZVAL_STRING(retval, str, 1);
         Z_SET_REFCOUNT_P(retval, 0);
         efree(str);
@@ -189,8 +153,8 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
             && !memcmp(Z_STRVAL_P(member), "remote_addr", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        if (r->req->remote_host) {
-            ZVAL_STRING(retval, r->req->remote_host, 1);
+        if (request->req->remote_host) {
+            ZVAL_STRING(retval, request->req->remote_host, 1);
         } else {
             ZVAL_STRING(retval, "", 1);
         }
@@ -200,7 +164,7 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
             && !memcmp(Z_STRVAL_P(member), "remote_port", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        ZVAL_LONG(retval, (int)r->req->remote_port);
+        ZVAL_LONG(retval, (int)request->req->remote_port);
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else if (Z_STRLEN_P(member) == (sizeof("headers") - 1)
@@ -208,7 +172,7 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
 
         MAKE_STD_ZVAL(retval);
         array_init(retval);
-        for (header = ((r->req->input_headers)->tqh_first);
+        for (header = ((request->req->input_headers)->tqh_first);
              header; 
              header = ((header)->next.tqe_next)
         ) {
@@ -221,10 +185,10 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
 
         MAKE_STD_ZVAL(retval);
         array_init(retval);
-        if (r->cookies) {
+        if (request->cookies) {
             zval *tmp;
             zend_hash_copy(
-                Z_ARRVAL_P(retval), Z_ARRVAL_P(r->cookies),
+                Z_ARRVAL_P(retval), Z_ARRVAL_P(request->cookies),
                 (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
             );
         }
@@ -235,10 +199,10 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
 
         MAKE_STD_ZVAL(retval);
         array_init(retval);
-        if (r->get) {
+        if (request->get) {
             zval *tmp;
             zend_hash_copy(
-                Z_ARRVAL_P(retval), Z_ARRVAL_P(r->get),
+                Z_ARRVAL_P(retval), Z_ARRVAL_P(request->get),
                 (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
             );
         }
@@ -249,10 +213,10 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
 
         MAKE_STD_ZVAL(retval);
         array_init(retval);
-        if (r->post) {
+        if (request->post) {
             zval *tmp;
             zend_hash_copy(
-                Z_ARRVAL_P(retval), Z_ARRVAL_P(r->post),
+                Z_ARRVAL_P(retval), Z_ARRVAL_P(request->post),
                 (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
             );
         }
@@ -263,10 +227,10 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
 
         MAKE_STD_ZVAL(retval);
         array_init(retval);
-        if (r->files) {
+        if (request->files) {
             zval *tmp;
             zend_hash_copy(
-                Z_ARRVAL_P(retval), Z_ARRVAL_P(r->files),
+                Z_ARRVAL_P(retval), Z_ARRVAL_P(request->files),
                 (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
             );
         }
@@ -276,14 +240,14 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
             && !memcmp(Z_STRVAL_P(member), "status", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        ZVAL_LONG(retval, (int)r->status);
+        ZVAL_LONG(retval, (int)request->status);
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else if (Z_STRLEN_P(member) == (sizeof("time") - 1)
             && !memcmp(Z_STRVAL_P(member), "time", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
-        ZVAL_DOUBLE(retval, r->time);
+        ZVAL_DOUBLE(retval, request->time);
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else {
@@ -306,41 +270,41 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
     char *str;
     struct evkeyval *header;
     
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_objects_get_address(object TSRMLS_CC);
     
     
     props = zend_std_get_properties(object TSRMLS_CC);
     
     MAKE_STD_ZVAL(zv);
-    ZVAL_STRING(zv, typeToMethod(r->req->type), 1);
+    ZVAL_STRING(zv, php_can_method_name(request->req->type), 1);
     zend_hash_update(props, "method", sizeof("method"), &zv, sizeof(zval), NULL);
     
     MAKE_STD_ZVAL(zv);
-    ZVAL_STRING(zv, r->uri != NULL ? r->uri : "", 1);
+    ZVAL_STRING(zv, request->uri != NULL ? request->uri : "", 1);
     zend_hash_update(props, "uri", sizeof("uri"), &zv, sizeof(zval), NULL);
     
     MAKE_STD_ZVAL(zv);
-    ZVAL_STRING(zv, r->query != NULL ? r->query : "", 1);
+    ZVAL_STRING(zv, request->query != NULL ? request->query : "", 1);
     zend_hash_update(props, "query", sizeof("query"), &zv, sizeof(zval), NULL);
 
     MAKE_STD_ZVAL(zv);
-    spprintf(&str, 0, "HTTP/%d.%d", r->req->major, r->req->minor);
+    spprintf(&str, 0, "HTTP/%d.%d", request->req->major, request->req->minor);
     ZVAL_STRING(zv, str, 1);
     zend_hash_update(props, "protocol", sizeof("protocol"), &zv, sizeof(zval), NULL);
     efree(str);
 
     MAKE_STD_ZVAL(zv);
-    ZVAL_STRING(zv, r->req->remote_host ? r->req->remote_host : "", 1);
+    ZVAL_STRING(zv, request->req->remote_host ? request->req->remote_host : "", 1);
     zend_hash_update(props, "remote_addr", sizeof("remote_addr"), &zv, sizeof(zval), NULL);
 
     MAKE_STD_ZVAL(zv);
-    ZVAL_LONG(zv, (int)r->req->remote_port);
+    ZVAL_LONG(zv, (int)request->req->remote_port);
     zend_hash_update(props, "remote_port", sizeof("remote_port"), &zv, sizeof(zval), NULL);
 
     MAKE_STD_ZVAL(zv);
     array_init(zv);
-    for (header = ((r->req->input_headers)->tqh_first);
+    for (header = ((request->req->input_headers)->tqh_first);
          header; 
          header = ((header)->next.tqe_next)
     ) {
@@ -350,10 +314,10 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
 
     MAKE_STD_ZVAL(zv);
     array_init(zv);
-    if (r->cookies) {
+    if (request->cookies) {
         zval *tmp;
         zend_hash_copy(
-            Z_ARRVAL_P(zv), Z_ARRVAL_P(r->cookies),
+            Z_ARRVAL_P(zv), Z_ARRVAL_P(request->cookies),
             (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
         );
     }
@@ -361,10 +325,10 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
 
     MAKE_STD_ZVAL(zv);
     array_init(zv);
-    if (r->get) {
+    if (request->get) {
         zval *tmp;
         zend_hash_copy(
-            Z_ARRVAL_P(zv), Z_ARRVAL_P(r->get),
+            Z_ARRVAL_P(zv), Z_ARRVAL_P(request->get),
             (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
         );
     }
@@ -372,10 +336,10 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
 
     MAKE_STD_ZVAL(zv);
     array_init(zv);
-    if (r->post) {
+    if (request->post) {
         zval *tmp;
         zend_hash_copy(
-            Z_ARRVAL_P(zv), Z_ARRVAL_P(r->post),
+            Z_ARRVAL_P(zv), Z_ARRVAL_P(request->post),
             (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
         );
     }
@@ -383,21 +347,21 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
 
     MAKE_STD_ZVAL(zv);
     array_init(zv);
-    if (r->files) {
+    if (request->files) {
         zval *tmp;
         zend_hash_copy(
-            Z_ARRVAL_P(zv), Z_ARRVAL_P(r->files),
+            Z_ARRVAL_P(zv), Z_ARRVAL_P(request->files),
             (copy_ctor_func_t)zval_add_ref, (void *)&tmp, sizeof(zval *)
         );
     }
     zend_hash_update(props, "files", sizeof("files"), &zv, sizeof(zval), NULL);
 
     MAKE_STD_ZVAL(zv);
-    ZVAL_LONG(zv, (int)r->status);
+    ZVAL_LONG(zv, (int)request->status);
     zend_hash_update(props, "status", sizeof("status"), &zv, sizeof(zval), NULL);
 
     MAKE_STD_ZVAL(zv);
-    ZVAL_DOUBLE(zv, r->time);
+    ZVAL_DOUBLE(zv, request->time);
     zend_hash_update(props, "time", sizeof("time"), &zv, sizeof(zval), NULL);
     
     return props;
@@ -430,10 +394,10 @@ static PHP_METHOD(CanServerRequest, findRequestHeader)
         return;
     }
     
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    const char *value =evhttp_find_header(r->req->input_headers, (const char*)header);
+    const char *value =evhttp_find_header(request->req->input_headers, (const char*)header);
     if (value == NULL) {
         RETURN_FALSE;
     }
@@ -445,12 +409,12 @@ static PHP_METHOD(CanServerRequest, findRequestHeader)
  */
 static PHP_METHOD(CanServerRequest, getRequestBody)
 {
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    int buffer_len = EVBUFFER_LENGTH(r->req->input_buffer);
+    int buffer_len = EVBUFFER_LENGTH(request->req->input_buffer);
     if (buffer_len > 0) {
-        RETURN_STRINGL(EVBUFFER_DATA(r->req->input_buffer), buffer_len, 1);
+        RETURN_STRINGL(EVBUFFER_DATA(request->req->input_buffer), buffer_len, 1);
     }
     RETURN_FALSE;
 }
@@ -476,10 +440,10 @@ static PHP_METHOD(CanServerRequest, addResponseHeader)
         return;
     }
 
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (evhttp_add_header(r->req->output_headers, header, value) != 0) {
+    if (evhttp_add_header(request->req->output_headers, header, value) != 0) {
         RETURN_FALSE;
     }
     RETURN_TRUE;
@@ -493,23 +457,33 @@ static PHP_METHOD(CanServerRequest, addResponseHeader)
 static PHP_METHOD(CanServerRequest, removeResponseHeader)
 {
     char *header, *value;
-    int header_len, value_len;
+    int header_len = 0, value_len = 0;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "s", &header, &header_len)) {
+            "s|s", &header, &header_len, &value, &value_len) || header_len == 0) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(string $header)",
+            "%s%s%s(string $header[, string $value])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
 
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    if (value_len > 0) {
+        char *existing_value = (char *)evhttp_find_header(request->req->output_headers, value);
+        if (NULL != existing_value && 0 == strcmp(value, existing_value)
+           && 0 == evhttp_remove_header(request->req->output_headers, header)
+        ) {
+            RETURN_TRUE;
+        }
+        RETURN_FALSE;
+    } 
 
-    if (evhttp_remove_header(r->req->output_headers, header) != 0) {
+    if (evhttp_remove_header(request->req->output_headers, header) != 0) {
         RETURN_FALSE;
     }
     RETURN_TRUE;
@@ -543,10 +517,10 @@ static PHP_METHOD(CanServerRequest, setResponseStatus)
         return;
     }
 
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    r->response_status = status;
+    request->response_status = status;
 }
 
 /**
@@ -556,25 +530,26 @@ static PHP_METHOD(CanServerRequest, redirect)
 {
     char *location;
     int *location_len = 0;
+    long status = 302;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "s", &location, &location_len) || location_len == 0) {
+            "s|l", &location, &location_len, &status) || location_len == 0 || status < 300 || status > 399) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(string $location)",
+            "%s%s%s(string $location[, int status = 302])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
     
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (evhttp_add_header(r->req->output_headers, "Location", location) != 0) {
+    if (evhttp_add_header(request->req->output_headers, "Location", location) != 0) {
         RETURN_FALSE;
     }
-    r->response_status = 302;
+    request->response_status = status;
     RETURN_TRUE;
 }
 
@@ -602,7 +577,7 @@ static PHP_METHOD(CanServerRequest, setCookie)
         return;
     }
     
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     char *cookie, *encoded_value = NULL;
@@ -694,7 +669,7 @@ static PHP_METHOD(CanServerRequest, setCookie)
         strlcat(cookie, "; httponly", len + 100);
     }
     
-    if (evhttp_add_header(r->req->output_headers, "Set-Cookie", cookie) != 0) {
+    if (evhttp_add_header(request->req->output_headers, "Set-Cookie", cookie) != 0) {
         RETVAL_FALSE;
     } else {
         RETVAL_TRUE;
@@ -779,7 +754,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
         return;
     }
     
-    struct php_can_server_request *r = (struct php_can_server_request*)
+    struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
     // handle $mimetype
@@ -850,18 +825,18 @@ static PHP_METHOD(CanServerRequest, sendFile)
                 return;
             }
 
-            evhttp_add_header(r->req->output_headers, "Content-Type", Z_STRVAL_P(retval));
+            evhttp_add_header(request->req->output_headers, "Content-Type", Z_STRVAL_P(retval));
             zval_ptr_dtor(&retval);
             zval_ptr_dtor(&object);
             
         } else {
             // finfo is not present, so just set to text/plain 
-            evhttp_add_header(r->req->output_headers, "Content-Type", "text/plain");
+            evhttp_add_header(request->req->output_headers, "Content-Type", "text/plain");
         }
         
     } else {
         // $mimetype was given
-        evhttp_add_header(r->req->output_headers, "Content-Type", mimetype);
+        evhttp_add_header(request->req->output_headers, "Content-Type", mimetype);
     }
     
     // handle $download
@@ -877,7 +852,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
         }
         if (basename) {
             spprintf(&basename, 0, "attachment; filename=\"%s\"", basename);
-            evhttp_add_header(r->req->output_headers, "Content-Disposition", basename);
+            evhttp_add_header(request->req->output_headers, "Content-Disposition", basename);
             efree(basename);
         }
     }
@@ -915,17 +890,17 @@ static PHP_METHOD(CanServerRequest, sendFile)
     spprintf(&etag, 0, "%X-%X-%X", (int)st.sb.st_ino, (int)st.sb.st_mtime, (int)st.sb.st_size);
 
     // check if client gave us ETag in header
-    const char *client_etag = evhttp_find_header(r->req->input_headers, "If-None-Match");
+    const char *client_etag = evhttp_find_header(request->req->input_headers, "If-None-Match");
     if (client_etag != NULL && strcmp(client_etag, etag) == 0) {
         
         // ETags are the same 
-        r->response_status = 304;
-        evhttp_send_reply(r->req, r->response_status, NULL, NULL);
+        request->response_status = 304;
+        evhttp_send_reply(request->req, request->response_status, NULL, NULL);
         
     } else {
         
         // ETag is not the same or unknown, so check client's modification stamp
-        const char *client_lm = evhttp_find_header(r->req->input_headers, "If-Modified-Since");
+        const char *client_lm = evhttp_find_header(request->req->input_headers, "If-Modified-Since");
         int client_ts = 0;
         if (client_lm != NULL) {
             zval retval, *strtotime, *time, *args[1];
@@ -947,14 +922,14 @@ static PHP_METHOD(CanServerRequest, sendFile)
             
             // modification falg of the file is older than client's stamp
             // so send "Not Modified" response
-            r->response_status = 304;
-            evhttp_send_reply(r->req, r->response_status, NULL, NULL);
+            request->response_status = 304;
+            evhttp_send_reply(request->req, request->response_status, NULL, NULL);
 
         } else {
 
             // we will send 2xx response (depending on rerquest method)
             // so we add ETag header
-            evhttp_add_header(r->req->output_headers, "ETag", etag);
+            evhttp_add_header(request->req->output_headers, "ETag", etag);
 
             // generate and add Last-Modified header
             char *lm = NULL;
@@ -976,28 +951,28 @@ static PHP_METHOD(CanServerRequest, sendFile)
             zval_ptr_dtor(&gmstrftime);
         
             if (lm != NULL) {
-                evhttp_add_header(r->req->output_headers, "Last-Modified", lm);
+                evhttp_add_header(request->req->output_headers, "Last-Modified", lm);
                 efree(lm);
             }
             
             // add Accept-Ranges header to notify client that we can handle
             // renged requests
-            evhttp_add_header(r->req->output_headers, "Accept-Ranges", "bytes");
+            evhttp_add_header(request->req->output_headers, "Accept-Ranges", "bytes");
             
             // if request method is HEAD, just add Content-Length header
             // and send respinse without body
-            if (r->req->type == EVHTTP_REQ_HEAD) {
-                r->response_status = 200;
+            if (request->req->type == EVHTTP_REQ_HEAD) {
+                request->response_status = 200;
                 char *size = NULL;
                 spprintf(&size, 0, "%ld", (long)st.sb.st_size);
-                evhttp_add_header(r->req->output_headers, "Content-Length", size);
-                evhttp_send_reply(r->req, r->response_status, NULL, NULL);
+                evhttp_add_header(request->req->output_headers, "Content-Length", size);
+                evhttp_send_reply(request->req, request->response_status, NULL, NULL);
                 efree(size);
             } else {
             
                 // check if the client requested the ranged content
                 long range_from = 0, range_to = st.sb.st_size, range_len;
-                char *range = (char *)evhttp_find_header(r->req->input_headers, "Range");
+                char *range = (char *)evhttp_find_header(request->req->input_headers, "Range");
                 if (range != NULL) {
                     int pos = php_can_strpos(range, "bytes=", 0);
                     if (FAILURE != pos) {
@@ -1043,13 +1018,13 @@ static PHP_METHOD(CanServerRequest, sendFile)
 
                     // requested range is not valid, so send appropriate
                     // response "Requested Range not satisfiable"
-                    r->response_status = 416;
-                    evhttp_send_reply(r->req, r->response_status, NULL, NULL);
+                    request->response_status = 416;
+                    evhttp_send_reply(request->req, request->response_status, NULL, NULL);
 
                 } else {
 
                     // set response code to 206 if partial content requested, to 200 otherwise
-                    r->response_status = range_len != st.sb.st_size ? 206 : 200;
+                    request->response_status = range_len != st.sb.st_size ? 206 : 200;
                     
                     // if requested range is smaller then chunksize,
                     // do not use chunked transfer encoding
@@ -1058,16 +1033,16 @@ static PHP_METHOD(CanServerRequest, sendFile)
                         char *content;
                         php_stream_seek(stream, range_from, SEEK_SET );
                         int content_len = php_stream_copy_to_mem(stream, &content, range_len, 0);
-                        if (r->response_status == 206) {
+                        if (request->response_status == 206) {
                             char *range = NULL;
                             spprintf(&range, 0, "bytes %ld-%ld/%ld", range_from, range_to, (long)st.sb.st_size);
-                            evhttp_add_header(r->req->output_headers, "Content-Range", range);
+                            evhttp_add_header(request->req->output_headers, "Content-Range", range);
                             efree(range);
                         }
-                        r->response_len = content_len;
+                        request->response_len = content_len;
                         struct evbuffer *buffer = evbuffer_new();
                         evbuffer_add(buffer, content, content_len);
-                        evhttp_send_reply(r->req, 200, NULL, buffer);
+                        evhttp_send_reply(request->req, 200, NULL, buffer);
                         evbuffer_free(buffer);
                         efree(content);
 
@@ -1078,11 +1053,11 @@ static PHP_METHOD(CanServerRequest, sendFile)
                         char *chunk;
                         while(-1 != php_stream_seek(stream, pos, SEEK_SET )) {
                             if (pos == range_from) {
-                                r->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENDING;
-                                r->response_len = 0;
-                                evhttp_send_reply_start(r->req, r->response_status, NULL);
+                                request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENDING;
+                                request->response_len = 0;
+                                evhttp_send_reply_start(request->req, request->response_status, NULL);
                             }
-                            int len = (r->response_len + chunksize) > range_len ? (range_len - r->response_len) : chunksize;
+                            int len = (request->response_len + chunksize) > range_len ? (range_len - request->response_len) : chunksize;
                             int chunk_len = php_stream_copy_to_mem(stream, &chunk, len, 0);
                             if (chunk_len == 0) {
                                 efree(chunk);
@@ -1090,22 +1065,22 @@ static PHP_METHOD(CanServerRequest, sendFile)
                             }
                             struct evbuffer *buffer = evbuffer_new();
                             evbuffer_add(buffer, chunk, chunk_len);
-                            evhttp_send_reply_chunk(r->req, buffer);
+                            evhttp_send_reply_chunk(request->req, buffer);
                             evbuffer_free(buffer);
                             efree(chunk);
-                            r->response_len += chunk_len;
+                            request->response_len += chunk_len;
                             pos += chunk_len;
-                            if (r->response_len == range_len) {
+                            if (request->response_len == range_len) {
                                 break;
                             }
                         }
-                        evhttp_send_reply_end(r->req);
+                        evhttp_send_reply_end(request->req);
                     }
                 }
             }
         }
     }
-    r->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
+    request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
     
     efree(etag);
     php_stream_close(stream);

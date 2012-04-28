@@ -25,17 +25,17 @@ static void server_route_dtor(void *object TSRMLS_DC);
 
 static zend_object_value server_route_ctor(zend_class_entry *ce TSRMLS_DC)
 {
-    struct php_can_server_route *r;
+    struct php_can_server_route *route;
     zend_object_value retval;
 
-    r = ecalloc(1, sizeof(*r));
-    zend_object_std_init(&r->std, ce TSRMLS_CC);
-    r->handler = NULL;
-    r->methods = 0;
-    r->regexp = NULL;
-    r->route = NULL;
-    r->casts = NULL;
-    retval.handle = zend_objects_store_put(r,
+    route = ecalloc(1, sizeof(*route));
+    zend_object_std_init(&route->std, ce TSRMLS_CC);
+    route->handler = NULL;
+    route->methods = 0;
+    route->regexp = NULL;
+    route->route = NULL;
+    route->casts = NULL;
+    retval.handle = zend_objects_store_put(route,
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_route_dtor,
             NULL TSRMLS_CC);
@@ -45,29 +45,29 @@ static zend_object_value server_route_ctor(zend_class_entry *ce TSRMLS_DC)
 
 static void server_route_dtor(void *object TSRMLS_DC)
 {
-    struct php_can_server_route *r = (struct php_can_server_route*)object;
+    struct php_can_server_route *route = (struct php_can_server_route*)object;
 
-    if (r->handler) {
-        zval_ptr_dtor(&r->handler);
+    if (route->handler) {
+        zval_ptr_dtor(&route->handler);
     }
 
-    if (r->regexp) {
-        efree(r->regexp);
-        r->regexp = NULL;
+    if (route->regexp) {
+        efree(route->regexp);
+        route->regexp = NULL;
     }
 
-    if (r->route) {
-        efree(r->route);
-        r->route = NULL;
+    if (route->route) {
+        efree(route->route);
+        route->route = NULL;
     }
     
-    if (r->casts) {
-        zval_ptr_dtor(&r->casts);
+    if (route->casts) {
+        zval_ptr_dtor(&route->casts);
     }
 
-    zend_objects_store_del_ref(&r->refhandle TSRMLS_CC);
-    zend_object_std_dtor(&r->std TSRMLS_CC);
-    efree(r);
+    zend_objects_store_del_ref(&route->refhandle TSRMLS_CC);
+    zend_object_std_dtor(&route->std TSRMLS_CC);
+    efree(route);
 
 }
 
@@ -86,13 +86,13 @@ static PHP_METHOD(CanServerRoute, __construct)
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(string $route, mixed $handler, int $methods)",
+            "%s%s%s(string $route, mixed $handler[, int $methods = Route::METHOD_GET])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
     }
 
-    struct php_can_server_route *r = (struct php_can_server_route*)
+    struct php_can_server_route *request = (struct php_can_server_route*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     char *func_name;
@@ -109,16 +109,16 @@ static PHP_METHOD(CanServerRoute, __construct)
     efree(func_name);
     
     zval_add_ref(&handler);
-    r->handler = handler;
+    request->handler = handler;
     
-    MAKE_STD_ZVAL(r->casts);
-    array_init(r->casts);
+    MAKE_STD_ZVAL(request->casts);
+    array_init(request->casts);
     
     if (FAILURE != php_can_strpos(route, "<", 0) && FAILURE != php_can_strpos(route, ">", 0)) {
         int i;
         for (i = 0; i < route_len; i++) {
             if (route[i] != '<') {
-                spprintf(&r->regexp, 0, "%s%c", r->regexp == NULL ? "" : r->regexp, route[i]);
+                spprintf(&request->regexp, 0, "%s%c", request->regexp == NULL ? "" : request->regexp, route[i]);
             } else {
                 int y = php_can_strpos(route, ">", i);
                 char *name = php_can_substr(route, i + 1, y - (i + 1));
@@ -127,36 +127,36 @@ static PHP_METHOD(CanServerRoute, __construct)
                     char *var = php_can_substr(name, 0, pos);
                     char *filter = php_can_substr(name, pos + 1, strlen(name) - (pos + 1));
                     if (strcmp(filter, "int") == 0) {
-                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, "-?[0-9]+");
-                        add_assoc_long(r->casts, var, IS_LONG);
+                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, "-?[0-9]+");
+                        add_assoc_long(request->casts, var, IS_LONG);
                     } else if (0 == strcmp(filter, "float")) {
-                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, "-?[0-9.]+");
-                        add_assoc_long(r->casts, var, IS_DOUBLE);
+                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, "-?[0-9.]+");
+                        add_assoc_long(request->casts, var, IS_DOUBLE);
                     } else if (0 == strcmp(filter, "path")) {
-                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, ".+?");
-                        add_assoc_long(r->casts, var, IS_PATH);
+                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, ".+?");
+                        add_assoc_long(request->casts, var, IS_PATH);
                     } else if (0 == (pos = php_can_strpos(filter, "re:", 0))) {
                         char *reg = php_can_substr(filter, pos + 3, strlen(filter) - (pos + 3));
-                        spprintf(&r->regexp, 0, "%s(?<%s>%s)", r->regexp, var, reg);
+                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, reg);
                         efree(reg);
                     }
                     efree(filter);
                     efree(var);
                     
                 } else {
-                    spprintf(&r->regexp, 0, "%s(?<%s>[^/]+)", r->regexp, name);
+                    spprintf(&request->regexp, 0, "%s(?<%s>[^/]+)", request->regexp, name);
                 }
                 efree(name);
                 i = y;
             }
         }
-        spprintf(&r->regexp, 0, "\1^%s$\1", r->regexp);
+        spprintf(&request->regexp, 0, "\1^%s$\1", request->regexp);
     }
     
-    r->route = estrndup(route, route_len);
+    request->route = estrndup(route, route_len);
     
     if (methods & PHP_CAN_SERVER_ROUTE_METHOD_ALL) {
-        r->methods = methods;
+        request->methods = methods;
     } else {
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -217,42 +217,51 @@ static PHP_METHOD(CanServerRoute, getMethod)
         return;
     }
     
-    struct php_can_server_route *r = (struct php_can_server_route*)
+    struct php_can_server_route *route = (struct php_can_server_route*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
     if (as_regexp) {
         char *retval = NULL;
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_GET) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "GET");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_GET) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "GET");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_POST) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "POST");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_POST) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "POST");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_HEAD) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "HEAD");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_HEAD) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "HEAD");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_PUT) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "PUT");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_PUT) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "PUT");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_DELETE) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "DELETE");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_DELETE) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "DELETE");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_OPTIONS) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "OPTIONS");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_OPTIONS) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "OPTIONS");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_TRACE) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "TRACE");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_TRACE) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "TRACE");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_CONNECT) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "CONNECT");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_CONNECT) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "CONNECT");
         }
-        if (r->methods & PHP_CAN_SERVER_ROUTE_METHOD_PATCH) {
-            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), (retval == NULL ? "" : "|"), "PATCH");
+        if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_PATCH) {
+            spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
+                    (retval == NULL ? "" : "|"), "PATCH");
         }
         int len = spprintf(&retval, 0, "(%s)", retval);
         RETVAL_STRINGL(retval, len, 0);
     } else {
-        RETVAL_LONG(r->methods);
+        RETVAL_LONG(route->methods);
     }
   
 }
@@ -262,10 +271,10 @@ static PHP_METHOD(CanServerRoute, getMethod)
  */
 static PHP_METHOD(CanServerRoute, getHandler)
 {
-    struct php_can_server_route *r = (struct php_can_server_route*)
+    struct php_can_server_route *route = (struct php_can_server_route*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
-    RETURN_ZVAL(r->handler, 1, 0);
+    RETURN_ZVAL(route->handler, 1, 0);
 }
 
 static zend_function_entry server_route_methods[] = {

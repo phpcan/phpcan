@@ -124,6 +124,23 @@ char * php_can_substr(char *str, int f, int l)
     return estrndup(str + f, l);
 }
 
+
+char * php_can_method_name(int type)
+{
+    switch (type) {
+        case EVHTTP_REQ_GET: return "GET"; break;
+        case EVHTTP_REQ_POST: return "POST"; break;
+        case EVHTTP_REQ_HEAD: return "HEAD"; break;
+        case EVHTTP_REQ_PUT: return "PUT"; break;
+        case EVHTTP_REQ_DELETE: return "DELETE"; break;
+        case EVHTTP_REQ_OPTIONS: return "OPTIONS"; break;
+        case EVHTTP_REQ_TRACE: return "TRACE"; break;
+        case EVHTTP_REQ_CONNECT: return "CONNECT"; break;
+        case EVHTTP_REQ_PATCH: return "PATCH"; break;
+        default: return "Unknown"; break;
+    }
+}
+
 zval * php_can_strtr_array(char *str, int slen, HashTable *hash)
 {
     zval **entry;
