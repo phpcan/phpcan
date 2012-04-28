@@ -60,6 +60,7 @@
 <li><a class="reference internal" href="#routing-static-files">Routing Static Files</a></li>
 <li><a class="reference internal" href="#forced-download">Forced Download</a></li>
 <li><a class="reference internal" href="#generating-content">Generating content</a></li>
+<li><a class="reference internal" href="#uploading-files">Uploading files</a></li>
 <li><a class="reference internal" href="#to-be-continued">To be continued...</a></li>
 </ul>
 </li>
@@ -70,7 +71,7 @@
                         title="previous chapter">PHP Can Web Framework</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="api/server.html"
-                        title="next chapter"><tt class="docutils literal docutils literal docutils literal"><span class="pre">\Can\Server</span></tt> API</a></p>
+                        title="next chapter"><tt class="docutils literal"><span class="pre">\Can\Server</span></tt> API</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="sources/howto.txt"
@@ -183,7 +184,7 @@ right away and implement RESTful, nice-looking and meaningful URLs with ease. He
 </div>
 </div>
 <div class="section" id="http-request-methods">
-<h2>HTTP Request Methods<a class="headerlink" href="#http-request-methods" title="Permalink to this headline">¶</a></h2>
+<span id="tutorial-request-methods"></span><h2>HTTP Request Methods<a class="headerlink" href="#http-request-methods" title="Permalink to this headline">¶</a></h2>
 <p>The HTTP protocol defines several request methods for different tasks. GET is the default for all routes
 with no other method specified. These routes will match GET requests only. To handle other methods such as POST, PUT or DELETE,
 add an appropriate class constant as 3. parameter to the Route constructor. You can use bitwise operators to combine multiple methods
@@ -219,7 +220,7 @@ submission and checks the login credentials the user entered into the form. The 
 in the <tt class="xref php php-attr docutils literal"><span class="pre">Request::$post</span></tt> container.</p>
 </div>
 <div class="section" id="routing-static-files">
-<h2>Routing Static Files<a class="headerlink" href="#routing-static-files" title="Permalink to this headline">¶</a></h2>
+<span id="tutorial-routing-staticfiles"></span><h2>Routing Static Files<a class="headerlink" href="#routing-static-files" title="Permalink to this headline">¶</a></h2>
 <p>Static files such as images or CSS files are not served automatically. You have to add a route and a callback to
 control which files get served and where to find them:</p>
 <div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
@@ -271,7 +272,7 @@ You can pass a custom MIME type as 3. parameter to disable guessing:</p>
 </div>
 </div>
 <div class="section" id="forced-download">
-<h2>Forced Download<a class="headerlink" href="#forced-download" title="Permalink to this headline">¶</a></h2>
+<span id="tutorial-forced-download"></span><h2>Forced Download<a class="headerlink" href="#forced-download" title="Permalink to this headline">¶</a></h2>
 <p>Most browsers try to open downloaded files if the MIME type is known and assigned to an application (e.g. PDF files).
 If this is not what you want, you can force a download dialog by setting 4. parameter to true:</p>
 <div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
@@ -302,6 +303,80 @@ If this is not what you want, you can force a download dialog by setting 4. para
 be set as output and <tt class="docutils literal"><span class="pre">Content-Type</span></tt> header will contain <tt class="docutils literal"><span class="pre">application/json</span></tt>.</dd>
 </dl>
 <p>All other types will produce 500 Internal Server Error</p>
+</div>
+<div class="section" id="uploading-files">
+<h2>Uploading files<a class="headerlink" href="#uploading-files" title="Permalink to this headline">¶</a></h2>
+<p>The request body of POST and PUT requests may contain form data encoded in various formats.
+The <tt class="xref php php-attr docutils literal"><span class="pre">Request::$post</span></tt> container contains parsed textual form fields, <tt class="xref php php-attr docutils literal"><span class="pre">Request::$files</span></tt> stores
+file upload informations.</p>
+<p>Example:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">\Can\Server</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Router</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Route</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Request</span><span class="p">;</span>
+
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/upload&#39;</span><span class="p">,</span>
+        <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">switch</span> <span class="p">(</span><span class="nv">$request</span><span class="o">-&gt;</span><span class="na">method</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">case</span> <span class="s1">&#39;POST&#39;</span><span class="o">:</span>
+                    <span class="k">return</span> <span class="nb">print_r</span><span class="p">(</span><span class="nv">$request</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+                    <span class="k">break</span><span class="p">;</span>
+                <span class="k">default</span><span class="o">:</span>
+                    <span class="k">return</span> <span class="s1">&#39;</span>
+<span class="s1">                        &lt;form action=&quot;/upload&quot; method=&quot;POST&quot; enctype=&quot;multipart/form-data&quot;&gt;</span>
+<span class="s1">                        &lt;input type=&quot;text&quot; name=&quot;foo&quot; value=&quot;bar&quot;/&gt;&lt;br/&gt;</span>
+<span class="s1">                        &lt;input type=&quot;file&quot; name=&quot;file1&quot; /&gt;&lt;/br/&gt;</span>
+<span class="s1">                        &lt;input type=&quot;text&quot; name=&quot;baz&quot; value=&quot;zak&quot;/&gt;&lt;br /&gt;</span>
+<span class="s1">                        &lt;input type=&quot;file&quot; name=&quot;file2&quot; /&gt;&lt;br/&gt;</span>
+<span class="s1">                        &lt;input type=&quot;submit&quot; name=&quot;submit&quot; value=&quot;Send&quot;&gt;&lt;/form&gt;</span>
+<span class="s1">                    &#39;</span><span class="p">;</span>
+                    <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+        <span class="p">},</span> <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span><span class="o">|</span><span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_POST</span>
+    <span class="p">)</span>
+<span class="p">]);</span>
+
+<span class="p">(</span><span class="k">new</span> <span class="nx">Server</span><span class="p">(</span><span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="mi">4567</span><span class="p">))</span><span class="o">-&gt;</span><span class="na">start</span><span class="p">(</span><span class="nv">$router</span><span class="p">);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<p>Run this script, visit <a class="reference external" href="http://localhost:4567/upload">http://localhost:4567/upload</a>, fill out and submit the form and you will see something similar:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="x">post data: Array</span>
+<span class="x">(</span>
+<span class="x">    [foo] =&gt; bar</span>
+<span class="x">    [baz] =&gt; zak</span>
+<span class="x">    [submit] =&gt; Send</span>
+<span class="x">)</span>
+
+<span class="x">uploaded files: Array</span>
+<span class="x">(</span>
+<span class="x">    [0] =&gt; Array</span>
+<span class="x">        (</span>
+<span class="x">            [name] =&gt; file</span>
+<span class="x">            [filename] =&gt; image1.jpg</span>
+<span class="x">            [filesize] =&gt; 32135</span>
+<span class="x">            [tmp_name] =&gt; /tmp/phpmcant7nl3iP</span>
+<span class="x">        )</span>
+
+<span class="x">    [1] =&gt; Array</span>
+<span class="x">        (</span>
+<span class="x">            [name] =&gt; file</span>
+<span class="x">            [filename] =&gt; image2.jpg</span>
+<span class="x">            [filesize] =&gt; 5643</span>
+<span class="x">            [tmp_name] =&gt; /tmp/phpcanrHv051</span>
+<span class="x">        )</span>
+
+<span class="x">)</span>
+</pre></div>
+</div>
+<p>Every item within <tt class="xref php php-attr docutils literal"><span class="pre">Request::$files</span></tt> array contains uploaded file information: <cite>name</cite> contains the
+form field name, <cite>filename</cite> - the real filename, <cite>filesize</cite> guess what?  and <cite>tmp_name</cite> is a path where uploaded file
+content is stored. Please note that uploaded files (<cite>tmp_name</cite>) will be cleaned after <tt class="xref php php-attr docutils literal"><span class="pre">Request</span></tt> object is destroyed
+therefor you must copy or move this files within request handler manually to be able to access it within your application.</p>
 </div>
 <div class="section" id="to-be-continued">
 <h2>To be continued...<a class="headerlink" href="#to-be-continued" title="Permalink to this headline">¶</a></h2>

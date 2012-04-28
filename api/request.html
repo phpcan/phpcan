@@ -155,6 +155,191 @@
 <dd><p><tt class="docutils literal"><span class="pre">float</span></tt> The timestamp of the start of the request.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="Can\Server\Request::findRequestHeader">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">findRequestHeader</tt><big>(</big><em>string $name</em><big>)</big><a class="headerlink" href="#Can\Server\Request::findRequestHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to find the value of the request header with the name $name. This will perform case-insensetive search
+through all request headers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">string</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::getRequestBody">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">getRequestBody</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server\Request::getRequestBody" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get raw content of the request body.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::addResponseHeader">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">addResponseHeader</tt><big>(</big><em>string $name</em>, <em>string $value</em><big>)</big><a class="headerlink" href="#Can\Server\Request::addResponseHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add response header.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$name</strong> (<em>string</em>) &#8211; The response header name.</li>
+<li><strong>$value</strong> (<em>string</em>) &#8211; The response header value.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">boolean <tt class="docutils literal"><span class="pre">true</span></tt> on success, <tt class="docutils literal"><span class="pre">false</span></tt> on failure</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::removeResponseHeader">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">removeResponseHeader</tt><big>(</big><em>string $name</em><span class="optional">[</span>, <em>string $value</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Can\Server\Request::removeResponseHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove response header. If value is provided the header will be only removed if the existing header value and given value are identical.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$name</strong> (<em>string</em>) &#8211; The response header name to remove.</li>
+<li><strong>$value</strong> (<em>string</em>) &#8211; The response header value filter.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">boolean <tt class="docutils literal"><span class="pre">true</span></tt> on success, <tt class="docutils literal"><span class="pre">false</span></tt> if header does not exist</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::setResponseStatus">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">setResponseStatus</tt><big>(</big><em>int $status</em><big>)</big><a class="headerlink" href="#Can\Server\Request::setResponseStatus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set response status.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$status</strong> (<em>int</em>) &#8211; The HTTP response status of the valid range 100-599</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::redirect">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">redirect</tt><big>(</big><em>string $location</em><span class="optional">[</span>, <em>int $status = 302</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Can\Server\Request::redirect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Redirect client to the new location. Actually this method adds the <tt class="docutils literal"><span class="pre">Location</span></tt> response header with provided $location
+and sets HTTP response status to 302 (by default) or any provided status in a valid range 300-399</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$location</strong> (<em>string</em>) &#8211; The new location to redirect client to.</li>
+<li><strong>$status</strong> (<em>int</em>) &#8211; The HTTP redirection response status of the valid range 300-399.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::setCookie">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">setCookie</tt><big>(</big><em>string $name</em><span class="optional">[</span>, <em>string $value</em><span class="optional">[</span>, <em>int $expire = 0</em><span class="optional">[</span>, <em>string $path = '/'</em><span class="optional">[</span>, <em>string $domain</em><span class="optional">[</span>, <em>bool $secure = false</em><span class="optional">[</span>, <em>bool $httponly = false</em><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span>, <em>)</em><big>)</big><a class="headerlink" href="#Can\Server\Request::setCookie" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the cookie. Actually this method adds <tt class="docutils literal"><span class="pre">Set-Cookie</span></tt> response header with provided options.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$name</strong> (<em>string</em>) &#8211; The name of the cookie.</li>
+<li><strong>$value</strong> (<em>string</em>) &#8211; The value of the cookie.</li>
+<li><strong>$expire</strong> (<em>int</em>) &#8211; The time the cookie expires. This is a Unix timestamp so is in number of seconds since the epoch.</li>
+<li><strong>$path</strong> (<em>string</em>) &#8211; The path on the server in which the cookie will be available on.</li>
+<li><strong>$domain</strong> (<em>string</em>) &#8211; The domain that the cookie is available to.</li>
+<li><strong>$secure</strong> (<em>bool</em>) &#8211; Indicates that the cookie should only be transmitted over a secure HTTPS connection from the client.</li>
+<li><strong>$httponly</strong> (<em>bool</em>) &#8211; When <tt class="docutils literal"><span class="pre">true</span></tt> the cookie will be made accessible only through the HTTP protocol.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">boolean <tt class="docutils literal"><span class="pre">true</span></tt> on success, <tt class="docutils literal"><span class="pre">false</span></tt> on failure</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::sendFile">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">sendFile</tt><big>(</big><em>string $filename</em><span class="optional">[</span>, <em>string $root</em><span class="optional">[</span>, <em>string $mimetype</em><span class="optional">[</span>, <em>mixed $download</em><span class="optional">[</span>, <em>int $chunksize=10240</em><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#Can\Server\Request::sendFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Serve file in a safe and convenient way. See <a class="reference internal" href="../howto.html#tutorial-routing-staticfiles"><em>Routing Static Files</em></a> for detailed information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>$filename</strong> (<em>string</em>) &#8211; Name of the file to send.</li>
+<li><strong>$root</strong> (<em>string</em>) &#8211; Root directory where file $filename to be expected.</li>
+<li><strong>$mimetype</strong> (<em>string</em>) &#8211; Add this mimetype instead of automatically guesed one.</li>
+<li><strong>$download</strong> (<em>bool|string</em>) &#8211; Force download of the file. If <tt class="docutils literal"><span class="pre">true</span></tt>, the filename will be determine automatically, if <tt class="docutils literal"><span class="pre">string</span></tt>, the filename will be set to value of $download.</li>
+<li><strong>$chunksize</strong> (<em>int</em>) &#8211; The size of the chunks if chunked transfer encoding is used (Serving of files with filesize &gt;= $chunksize). Default value is 10240 bytes.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 
 

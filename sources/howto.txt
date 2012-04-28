@@ -107,6 +107,8 @@ right away and implement RESTful, nice-looking and meaningful URLs with ease. He
     
     ?>
 
+.. _tutorial-request-methods:
+
 HTTP Request Methods
 --------------------
 
@@ -145,6 +147,8 @@ In this example the ``/login`` URL is linked to two distinct callbacks, one for 
 POST requests. The first one displays a HTML form to the user. The second callback is invoked on a form 
 submission and checks the login credentials the user entered into the form. The submited post data is available
 in the :php:attr:`Request::$post` container.
+
+.. _tutorial-routing-staticfiles:
 
 Routing Static Files
 --------------------
@@ -204,6 +208,8 @@ You can pass a custom MIME type as 3. parameter to disable guessing:
 
     ?>
     
+.. _tutorial-forced-download:
+    
 Forced Download
 ---------------
 
@@ -243,6 +249,86 @@ Objects
     be set as output and ``Content-Type`` header will contain ``application/json``. 
     
 All other types will produce 500 Internal Server Error
+
+Uploading files
+---------------
+
+The request body of POST and PUT requests may contain form data encoded in various formats. 
+The :php:attr:`Request::$post` container contains parsed textual form fields, :php:attr:`Request::$files` stores 
+file upload informations.
+
+Example:
+
+.. code-block:: php
+
+    <?php
+
+    use \Can\Server;
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
+
+    $router = new Router([
+        new Route('/upload', 
+            function(Request $request) {
+                switch ($request->method) {
+                    case 'POST':
+                        return print_r($request, true);
+                        break;
+                    default:
+                        return '
+                            <form action="/upload" method="POST" enctype="multipart/form-data">
+                            <input type="text" name="foo" value="bar"/><br/>
+                            <input type="file" name="file1" /></br/>
+                            <input type="text" name="baz" value="zak"/><br />
+                            <input type="file" name="file2" /><br/>
+                            <input type="submit" name="submit" value="Send"></form>
+                        ';
+                        break;
+                }
+            }, Route::METHOD_GET|Route::METHOD_POST
+        )
+    ]);
+
+    (new Server('127.0.0.1', 4567))->start($router);
+
+    ?>
+    
+Run this script, visit http://localhost:4567/upload, fill out and submit the form and you will see something similar:
+
+.. code-block:: php
+
+    post data: Array
+    (
+        [foo] => bar
+        [baz] => zak
+        [submit] => Send
+    )
+
+    uploaded files: Array
+    (
+        [0] => Array
+            (
+                [name] => file
+                [filename] => image1.jpg
+                [filesize] => 32135
+                [tmp_name] => /tmp/phpmcant7nl3iP
+            )
+
+        [1] => Array
+            (
+                [name] => file
+                [filename] => image2.jpg
+                [filesize] => 5643
+                [tmp_name] => /tmp/phpcanrHv051
+            )
+
+    )
+
+Every item within :php:attr:`Request::$files` array contains uploaded file information: `name` contains the
+form field name, `filename` - the real filename, `filesize` guess what?  and `tmp_name` is a path where uploaded file
+content is stored. Please note that uploaded files (`tmp_name`) will be cleaned after :php:attr:`Request` object is destroyed 
+therefor you must copy or move this files within request handler manually to be able to access it within your application.
 
 
 To be continued...

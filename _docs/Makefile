@@ -48,6 +48,7 @@ html:
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 	@find $(BUILDDIR)/html -type f -name "*.html" -exec sh -c "cat {} | sed -e 's#_static/#static/#g' | cat > {}.tmp ; mv {}.tmp {}" ";"
+	@rm -Rf $(BUILDDIR)/html/static $(BUILDDIR)/html/sources
 	@mv $(BUILDDIR)/html/_static $(BUILDDIR)/html/static
 	@find $(BUILDDIR)/html -type f -name "*.html" -exec sh -c "cat {} | sed -e 's#_sources/#sources/#g' | cat > {}.tmp ; mv {}.tmp {}" ";"
 	@mv $(BUILDDIR)/html/_sources $(BUILDDIR)/html/sources
