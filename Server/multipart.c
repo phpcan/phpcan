@@ -363,7 +363,7 @@ void  php_can_parse_multipart(const char* content_type, struct evbuffer* buffer,
 
                         if (value_len > 0) {
 
-                            fd = php_open_temporary_fd_ex(PG(upload_tmp_dir), "phpmcrst", &temp_filename, 1 TSRMLS_CC);
+                            fd = php_open_temporary_fd_ex(PG(upload_tmp_dir), "phpcan", &temp_filename, 1 TSRMLS_CC);
                             if (fd == -1) { // create temporary file failed
                                 php_error_docref(NULL TSRMLS_CC, E_WARNING,
                                     "File upload error - unable to create a temporary file");
