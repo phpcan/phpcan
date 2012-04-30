@@ -187,7 +187,7 @@ wildcard won't match a path with a slash in it. To serve files in subdirectories
 
     ?>
 
-The ``\Can\Server\Request::sendFile`` method is a helper to serve files in a safe and convenient way. 
+The :php:meth:`Request::sendFile` method is a helper to serve files in a safe and convenient way. 
 It automatically guesses a mime-type, adds a ``Last-Modified``  header, generate and add ETag header, restricts paths 
 to a root directory for security reasons and generates appropriate error responses (401 on permission errors, 404 on missing files). 
 It supports the ``If-Modified-Since`` and ``If-None-Match`` headers and eventually generates a 304 Not Modified response. 
@@ -273,7 +273,9 @@ Example:
             function(Request $request) {
                 switch ($request->method) {
                     case 'POST':
-                        return print_r($request, true);
+                        return '<pre>' . PHP_EOL . 
+                               'post data: ' . print_r($request->post, true) . PHP_EOL .
+                               'uploaded files: ' . print_r($request->files, true) . PHP_EOL;
                         break;
                     default:
                         return '
@@ -309,7 +311,7 @@ Run this script, visit http://localhost:4567/upload, fill out and submit the for
     (
         [0] => Array
             (
-                [name] => file
+                [name] => file1
                 [filename] => image1.jpg
                 [filesize] => 32135
                 [tmp_name] => /tmp/phpmcant7nl3iP
@@ -317,7 +319,7 @@ Run this script, visit http://localhost:4567/upload, fill out and submit the for
 
         [1] => Array
             (
-                [name] => file
+                [name] => file2
                 [filename] => image2.jpg
                 [filesize] => 5643
                 [tmp_name] => /tmp/phpcanrHv051
@@ -330,6 +332,43 @@ form field name, `filename` - the real filename, `filesize` guess what?  and `tm
 content is stored. Please note that uploaded files (`tmp_name`) will be cleaned after :php:attr:`Request` object is destroyed 
 therefor you must copy or move this files within request handler manually to be able to access it within your application.
 
+Static server example
+---------------------
 
+Here is an example how to implement a HTTP service that servs static content. 
+    1. Download PHP Can pages tarball from https://github.com/phpcan/phpcan/tarball/gh-pages
+    2. Extract tarball to /tmp directory
+    3. Create PHP script with following content (replace '/tmp/phpcan-phpcan-f4b83b2' with correct value):
+
+.. code-block:: php
+
+    <?php
+
+    use \Can\Server;
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
+    
+    (new Server(
+        '127.0.0.1', 4567, 
+        "time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error\n")
+    )->start(
+        new Router([
+            new Route(
+                '/<file:path>',
+                function (Request $request, array $args) {
+                    return $request->sendFile($args['file'], '/tmp/phpcan-phpcan-f4b83b2');
+                },
+                (Route::METHOD_GET|Route::METHOD_HEAD)
+            )
+        ])
+    );
+    
+    ?>
+    
+    4. Start this script with your PHP cli and point your browser to http://localhost:4567/index.html
+    
+    That's it.
+    
 To be continued...
 ------------------

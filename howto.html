@@ -61,6 +61,7 @@
 <li><a class="reference internal" href="#forced-download">Forced Download</a></li>
 <li><a class="reference internal" href="#generating-content">Generating content</a></li>
 <li><a class="reference internal" href="#uploading-files">Uploading files</a></li>
+<li><a class="reference internal" href="#static-server-example">Static server example</a></li>
 <li><a class="reference internal" href="#to-be-continued">To be continued...</a></li>
 </ul>
 </li>
@@ -251,7 +252,7 @@ wildcard won&#8217;t match a path with a slash in it. To serve files in subdirec
 <span class="cp">?&gt;</span><span class="x"></span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">\Can\Server\Request::sendFile</span></tt> method is a helper to serve files in a safe and convenient way.
+<p>The <tt class="xref php php-meth docutils literal"><span class="pre">Request::sendFile</span></tt> method is a helper to serve files in a safe and convenient way.
 It automatically guesses a mime-type, adds a <tt class="docutils literal"><span class="pre">Last-Modified</span></tt>  header, generate and add ETag header, restricts paths
 to a root directory for security reasons and generates appropriate error responses (401 on permission errors, 404 on missing files).
 It supports the <tt class="docutils literal"><span class="pre">If-Modified-Since</span></tt> and <tt class="docutils literal"><span class="pre">If-None-Match</span></tt> headers and eventually generates a 304 Not Modified response.
@@ -322,7 +323,9 @@ file upload informations.</p>
         <span class="k">function</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">)</span> <span class="p">{</span>
             <span class="k">switch</span> <span class="p">(</span><span class="nv">$request</span><span class="o">-&gt;</span><span class="na">method</span><span class="p">)</span> <span class="p">{</span>
                 <span class="k">case</span> <span class="s1">&#39;POST&#39;</span><span class="o">:</span>
-                    <span class="k">return</span> <span class="nb">print_r</span><span class="p">(</span><span class="nv">$request</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+                    <span class="k">return</span> <span class="s1">&#39;&lt;pre&gt;&#39;</span> <span class="o">.</span> <span class="nx">PHP_EOL</span> <span class="o">.</span>
+                           <span class="s1">&#39;post data: &#39;</span> <span class="o">.</span> <span class="nb">print_r</span><span class="p">(</span><span class="nv">$request</span><span class="o">-&gt;</span><span class="na">post</span><span class="p">,</span> <span class="k">true</span><span class="p">)</span> <span class="o">.</span> <span class="nx">PHP_EOL</span> <span class="o">.</span>
+                           <span class="s1">&#39;uploaded files: &#39;</span> <span class="o">.</span> <span class="nb">print_r</span><span class="p">(</span><span class="nv">$request</span><span class="o">-&gt;</span><span class="na">files</span><span class="p">,</span> <span class="k">true</span><span class="p">)</span> <span class="o">.</span> <span class="nx">PHP_EOL</span><span class="p">;</span>
                     <span class="k">break</span><span class="p">;</span>
                 <span class="k">default</span><span class="o">:</span>
                     <span class="k">return</span> <span class="s1">&#39;</span>
@@ -356,7 +359,7 @@ file upload informations.</p>
 <span class="x">(</span>
 <span class="x">    [0] =&gt; Array</span>
 <span class="x">        (</span>
-<span class="x">            [name] =&gt; file</span>
+<span class="x">            [name] =&gt; file1</span>
 <span class="x">            [filename] =&gt; image1.jpg</span>
 <span class="x">            [filesize] =&gt; 32135</span>
 <span class="x">            [tmp_name] =&gt; /tmp/phpmcant7nl3iP</span>
@@ -364,7 +367,7 @@ file upload informations.</p>
 
 <span class="x">    [1] =&gt; Array</span>
 <span class="x">        (</span>
-<span class="x">            [name] =&gt; file</span>
+<span class="x">            [name] =&gt; file2</span>
 <span class="x">            [filename] =&gt; image2.jpg</span>
 <span class="x">            [filesize] =&gt; 5643</span>
 <span class="x">            [tmp_name] =&gt; /tmp/phpcanrHv051</span>
@@ -377,6 +380,47 @@ file upload informations.</p>
 form field name, <cite>filename</cite> - the real filename, <cite>filesize</cite> guess what?  and <cite>tmp_name</cite> is a path where uploaded file
 content is stored. Please note that uploaded files (<cite>tmp_name</cite>) will be cleaned after <tt class="xref php php-attr docutils literal"><span class="pre">Request</span></tt> object is destroyed
 therefor you must copy or move this files within request handler manually to be able to access it within your application.</p>
+</div>
+<div class="section" id="static-server-example">
+<h2>Static server example<a class="headerlink" href="#static-server-example" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>Here is an example how to implement a HTTP service that servs static content.</dt>
+<dd><ol class="first last arabic simple">
+<li>Download PHP Can pages tarball from <a class="reference external" href="https://github.com/phpcan/phpcan/tarball/gh-pages">https://github.com/phpcan/phpcan/tarball/gh-pages</a></li>
+<li>Extract tarball to /tmp directory</li>
+<li>Create PHP script with following content (replace &#8216;/tmp/phpcan-phpcan-f4b83b2&#8217; with correct value):</li>
+</ol>
+</dd>
+</dl>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">\Can\Server</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Router</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Route</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\Request</span><span class="p">;</span>
+
+<span class="p">(</span><span class="k">new</span> <span class="nx">Server</span><span class="p">(</span>
+    <span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="mi">4567</span><span class="p">,</span>
+    <span class="s2">&quot;time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="p">)</span><span class="o">-&gt;</span><span class="na">start</span><span class="p">(</span>
+    <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
+        <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span>
+            <span class="s1">&#39;/&lt;file:path&gt;&#39;</span><span class="p">,</span>
+            <span class="k">function</span> <span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="k">array</span> <span class="nv">$args</span><span class="p">)</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="nv">$request</span><span class="o">-&gt;</span><span class="na">sendFile</span><span class="p">(</span><span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">],</span> <span class="s1">&#39;/tmp/phpcan-phpcan-f4b83b2&#39;</span><span class="p">);</span>
+            <span class="p">},</span>
+            <span class="p">(</span><span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span><span class="o">|</span><span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_HEAD</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">])</span>
+<span class="p">);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+
+<span class="x">4. Start this script with your PHP cli and point your browser to http://localhost:4567/index.html</span>
+
+<span class="x">That&#39;s it.</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="to-be-continued">
 <h2>To be continued...<a class="headerlink" href="#to-be-continued" title="Permalink to this headline">¶</a></h2>
@@ -409,7 +453,7 @@ therefor you must copy or move this files within request handler manually to be 
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on Apr 28, 2012.
+      Last updated on Apr 30, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

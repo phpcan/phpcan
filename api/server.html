@@ -149,15 +149,15 @@
 <span class="c1">// Bind server to all available network interfaces on port 8080</span>
 <span class="c1">// with logging to standard output with defined format</span>
 <span class="nv">$server</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Server</span><span class="p">(</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span>  <span class="mi">8080</span><span class="p">,</span>
-    <span class="s2">&quot;x-reqnum time c-ip cs-method cs-uri sc-status &quot;</span> <span class="o">.</span>
-        <span class="s2">&quot;sc-bytes time-taken x-memusage x-error</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="s2">&quot;time c-ip cs-method cs-uri sc-status &quot;</span> <span class="o">.</span>
+    <span class="s2">&quot;sc-bytes time-taken x-memusage x-error</span><span class="se">\n</span><span class="s2">&quot;</span>
 <span class="p">);</span>
 
 <span class="c1">// Bind server to all available network interfaces on port 8080</span>
 <span class="c1">// with logging to defined logfile and log format</span>
 <span class="nv">$server</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Server</span><span class="p">(</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span>  <span class="mi">8080</span><span class="p">,</span>
-    <span class="s2">&quot;x-reqnum time c-ip cs-method cs-uri sc-status &quot;</span> <span class="o">.</span>
-        <span class="s2">&quot;sc-bytes time-taken x-memusage x-error</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;time c-ip cs-method cs-uri sc-status &quot;</span> <span class="o">.</span>
+    <span class="s2">&quot;sc-bytes time-taken x-memusage x-error</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
     <span class="nb">fopen</span><span class="p">(</span><span class="s1">&#39;/tmp/phpcan.log&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
 <span class="p">);</span>
 
@@ -231,7 +231,7 @@
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on Apr 28, 2012.
+      Last updated on Apr 30, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

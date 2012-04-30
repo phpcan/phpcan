@@ -332,7 +332,6 @@ form field name, `filename` - the real filename, `filesize` guess what?  and `tm
 content is stored. Please note that uploaded files (`tmp_name`) will be cleaned after :php:attr:`Request` object is destroyed 
 therefor you must copy or move this files within request handler manually to be able to access it within your application.
 
-
 Static server example
 ---------------------
 
@@ -371,6 +370,5 @@ Here is an example how to implement a HTTP service that servs static content.
     
     That's it.
     
-
 To be continued...
 ------------------
