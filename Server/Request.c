@@ -892,6 +892,24 @@ static PHP_METHOD(CanServerRequest, sendFile)
                 return;
             }
 
+            // workaround for CSS files bug in magic library. If css file beginns with C-style comments
+            // magic returns text/x-c as mimetype - we rewright it to test/css if the file has .css extension
+            if (0 == php_can_strpos(Z_STRVAL_P(retval), "text/x-c;", 0)) {
+                char *ext = php_can_substr(filepath, -5, 5);
+                if (ext != NULL) {
+                    if (0 == strcasecmp(ext, ".css")) {
+                        int mime_len = sizeof("text/x-c;") - 1;
+                        char *encoding = php_can_substr(Z_STRVAL_P(retval), mime_len, Z_STRLEN_P(retval) - mime_len);
+                        if (encoding != NULL) {
+                            efree(Z_STRVAL_P(retval));
+                            Z_STRLEN_P(retval) = spprintf(&(Z_STRVAL_P(retval)), 0, "text/css;%s", encoding);
+                            efree(encoding);
+                        }
+                    }
+                    efree(ext);
+                }
+            }
+            
             evhttp_add_header(request->req->output_headers, "Content-Type", Z_STRVAL_P(retval));
             zval_ptr_dtor(&retval);
             zval_ptr_dtor(&object);
@@ -925,10 +943,13 @@ static PHP_METHOD(CanServerRequest, sendFile)
     }
     efree(filepath);
     
+    // add Accept-Ranges header to notify client that we can handle renged requests
+    evhttp_add_header(request->req->output_headers, "Accept-Ranges", "bytes");
     
-    // generate ETag
+    // generate and ETag
     char *etag = NULL;
-    spprintf(&etag, 0, "%X-%X-%X", (int)st.sb.st_ino, (int)st.sb.st_mtime, (int)st.sb.st_size);
+    spprintf(&etag, 0, "\"%x-%x-%x\"", (int)st.sb.st_ino, (int)st.sb.st_mtime, (int)st.sb.st_size);
+    evhttp_add_header(request->req->output_headers, "ETag", etag);
 
     // check if client gave us ETag in header
     const char *client_etag = evhttp_find_header(request->req->input_headers, "If-None-Match");
@@ -968,10 +989,6 @@ static PHP_METHOD(CanServerRequest, sendFile)
 
         } else {
 
-            // we will send 2xx response (depending on rerquest method)
-            // so we add ETag header
-            evhttp_add_header(request->req->output_headers, "ETag", etag);
-
             // generate and add Last-Modified header
             char *lm = NULL;
             zval retval, *gmstrftime, *format, *timestamp, *args[2];
@@ -995,10 +1012,6 @@ static PHP_METHOD(CanServerRequest, sendFile)
                 evhttp_add_header(request->req->output_headers, "Last-Modified", lm);
                 efree(lm);
             }
-            
-            // add Accept-Ranges header to notify client that we can handle
-            // renged requests
-            evhttp_add_header(request->req->output_headers, "Accept-Ranges", "bytes");
             
             // if request method is HEAD, just add Content-Length header
             // and send respinse without body

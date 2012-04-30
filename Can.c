@@ -68,13 +68,13 @@ int php_can_strpos(char *haystack, char *needle, int offset)
  *            counting from zero. For instance, in the string 'abcdef', the character at position 0 is 'a',
  *            the character at position 2 is 'c', and so forth.
  *            If start is negative, the returned string will start at the start'th character from the end of string.
- *            If string is less than or equal to start characters long, FALSE will be returned.
+ *            If string is less than or equal to start characters long, NULL will be returned.
  * @param l   If length is given and is positive, the string returned will contain at most length characters 
  *            beginning from start (depending on the length of string).
  *            If length is given and is negative, then that many characters will be omitted from the end of string 
  *            (after the start position has been calculated when a start is negative). If start denotes the position 
  *            of this truncation or beyond, false will be returned.
- *            If length is given and is 0, FALSE or NULL an empty string will be returned.
+ *            If length is given and is 0 an empty string will be returned.
  *            If length is omitted, the substring starting from start until the end of the string will be returned. 
  * @return 
  */
