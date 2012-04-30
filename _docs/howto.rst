@@ -187,7 +187,7 @@ wildcard won't match a path with a slash in it. To serve files in subdirectories
 
     ?>
 
-The ``\Can\Server\Request::sendFile`` method is a helper to serve files in a safe and convenient way. 
+The :php:meth:`Request::sendFile` method is a helper to serve files in a safe and convenient way. 
 It automatically guesses a mime-type, adds a ``Last-Modified``  header, generate and add ETag header, restricts paths 
 to a root directory for security reasons and generates appropriate error responses (401 on permission errors, 404 on missing files). 
 It supports the ``If-Modified-Since`` and ``If-None-Match`` headers and eventually generates a 304 Not Modified response. 
