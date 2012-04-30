@@ -678,17 +678,18 @@ static PHP_METHOD(CanServerRequest, setCookie)
 }
 
 /**
- * Get realpath of the given filename
+ * Get realpath of the given path
  */
-static char *get_realpath(char *filename TSRMLS_DC)
+static char *get_realpath(char *path, int check_is_readable TSRMLS_DC)
 {
     char resolved_path_buff[MAXPATHLEN];
-    if (VCWD_REALPATH(filename, resolved_path_buff)) {
+    if (VCWD_REALPATH(path, resolved_path_buff)) {
         if (php_check_open_basedir(resolved_path_buff TSRMLS_CC)) {
             return NULL;
         }
-#ifdef ZTS
-        if (VCWD_ACCESS(resolved_path_buff, F_OK)) {
+                
+#ifdef R_OK
+        if (check_is_readable == 1 && VCWD_ACCESS(resolved_path_buff, R_OK)) {
             return NULL;
         }
 #endif
@@ -709,7 +710,9 @@ static PHP_METHOD(CanServerRequest, sendFile)
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "p|pszl", &filename, &filename_len, &root, &root_len, 
-                     &mimetype, &mimetype_len, &download, &chunksize)) {
+                     &mimetype, &mimetype_len, &download, &chunksize)
+        || filename_len == 0
+    ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -719,11 +722,19 @@ static PHP_METHOD(CanServerRequest, sendFile)
         return;
     }
     
+    // do not serve requests for files begins with ``/..`` or ``../``
+    if (0 == php_can_strpos(filename, "/..", 0) || 0 == php_can_strpos(filename, "../", 0)) {
+        php_can_throw_exception_code(
+            ce_can_HTTPError TSRMLS_CC, 400, "Bogus file requested '%s'", filename
+        );
+        return;
+    }
+    
     // try to determine real path of the given root
-    char *path = NULL;
+    char *rootpath = NULL;
     if (root_len > 0) {
-        path = get_realpath(root TSRMLS_CC);
-        if (path == NULL) {
+        rootpath = get_realpath(root, 1 TSRMLS_CC);
+        if (rootpath == NULL) {
             const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
             php_can_throw_exception(
                 ce_can_InvalidParametersException TSRMLS_CC,
@@ -736,20 +747,83 @@ static PHP_METHOD(CanServerRequest, sendFile)
     }
     
     // try to determine real path of the root+file
-    char *filepath = NULL;
-    spprintf(&filepath, 0, "%s%s%s", path ? path : "", (path && filename[0] != '/' ? "/" : ""), filename);
-    if (path != NULL) {
-        efree(path);
-    }
-    path = get_realpath(filepath TSRMLS_CC);
-    if (path == NULL) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_can_throw_exception(
-            ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(): Cannot determine real path of file '%s'",
-            class_name, space, get_active_function_name(TSRMLS_C),
-            filepath
+    char *tmppath = NULL;
+    spprintf(&tmppath, 0, "%s%s%s", rootpath ? rootpath : "", (rootpath && filename[0] != '/' ? "/" : ""), filename);
+
+    // resolve realpath of the requested file
+    char *filepath = get_realpath(tmppath, 0 TSRMLS_CC);
+    if (filepath == NULL) {
+        php_can_throw_exception_code(
+            ce_can_HTTPError TSRMLS_CC, 404, "Requested file '%s' does not exist", tmppath
         );
+        efree(tmppath);
+        efree(rootpath);
+        return;
+    }
+    efree(tmppath);
+    
+    // requested file exists, we check if file is within root path, 
+    // otherwise we send 404 File Not Found to prevent giving informations 
+    // about existence of this file on the server machine. This check prevents 
+    // serving of the symlinks to outside of the root path as well.
+    if (0 != php_can_strpos(filepath, rootpath, 0)) {
+        php_can_throw_exception_code(
+            ce_can_HTTPError TSRMLS_CC, 404, "Requested file '%s' is not within root path '%s'", filepath, rootpath
+        );
+        efree(filepath);
+        efree(rootpath);
+        return;
+    }
+    
+    efree(rootpath);
+    
+#ifdef R_OK
+    // requested path exists and is within root path, check for read permissions
+    if (VCWD_ACCESS(filepath, R_OK)) {
+        php_can_throw_exception_code(
+            ce_can_HTTPError TSRMLS_CC, 403, "Requested file '%s' is not readable", filepath
+        );
+        efree(filepath);
+        return;
+    }
+#endif
+    
+    // open stream to the requested path
+    int flags = (
+        STREAM_MUST_SEEK                // we gonna seek within stream
+        | STREAM_DISABLE_OPEN_BASEDIR   // we have already checked for open_base dir, so skip it
+        | STREAM_ASSUME_REALPATH        // assume the path passed in exists and is fully expanded, avoiding syscalls
+        | STREAM_DISABLE_URL_PROTECTION // skip allow_url_fopen and allow_url_include checks
+        | REPORT_ERRORS
+    );
+    php_stream *stream = php_stream_open_wrapper(filepath, "rb", flags, NULL);
+    if (!stream) {
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
+            "Cannot read content of the file '%s'", filepath
+        );
+        efree(filepath);
+        return;
+    }
+    
+    // get stream stats
+    php_stream_statbuf st;
+    if (php_stream_stat(stream, &st) < 0) {
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
+            "Cannot stat of the file '%s'", filepath
+        );
+        efree(filepath);
+        return;
+    }
+    
+    // we do not serving directory listings, so if requested URI points to directory
+    // we send 403 Forbidden response to the client
+    if (S_ISDIR(st.sb.st_mode)) {
+        php_can_throw_exception_code(
+            ce_can_HTTPError TSRMLS_CC, 403, "Requested path '%s' is a directory", filepath
+        );
+        php_stream_close(stream);
         efree(filepath);
         return;
     }
@@ -804,24 +878,17 @@ static PHP_METHOD(CanServerRequest, sendFile)
                     "Failed to call '%s' constructor",
                     ce->name
                 );
-                
                 efree(filepath);
-                if (path != NULL) {
-                    efree(path);
-                }
                 return;
             }
             
             // call finfo->file(filename)
             MAKE_STD_ZVAL(zfilepath);
-            ZVAL_STRING(zfilepath, path, 1);
+            ZVAL_STRING(zfilepath, filepath, 1);
             zend_call_method_with_1_params(&object, Z_OBJCE_P(object), NULL, "file", &retval, zfilepath);
             zval_ptr_dtor(&zfilepath);
             if (EG(exception)) {
                 efree(filepath);
-                if (path != NULL) {
-                    efree(path);
-                }
                 return;
             }
 
@@ -856,34 +923,8 @@ static PHP_METHOD(CanServerRequest, sendFile)
             efree(basename);
         }
     }
-    
     efree(filepath);
     
-    // open stream wrapper to the file
-    php_stream *stream = php_stream_open_wrapper(path, "rb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
-    if (!stream) {
-        php_can_throw_exception(
-            ce_can_RuntimeException TSRMLS_CC,
-            "Cannot read content of the file '%s'", path
-        );
-        if (path != NULL) {
-            efree(path);
-        }
-        return;
-    }
-    
-    // get file stats
-    php_stream_statbuf st;
-    if (php_stream_stat(stream, &st) < 0) {
-        php_can_throw_exception(
-            ce_can_RuntimeException TSRMLS_CC,
-            "Cannot stat of the file '%s'", path
-        );
-        if (path != NULL) {
-            efree(path);
-        }
-        return;
-    }
     
     // generate ETag
     char *etag = NULL;
@@ -1084,9 +1125,6 @@ static PHP_METHOD(CanServerRequest, sendFile)
     
     efree(etag);
     php_stream_close(stream);
-    if (path != NULL) {
-        efree(path);
-    }
 }
 
 static zend_function_entry server_request_methods[] = {
