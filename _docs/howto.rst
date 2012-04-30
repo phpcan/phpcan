@@ -339,6 +339,7 @@ Here is an example how to implement a HTTP service that servs static content.
     1. Download PHP Can pages tarball from https://github.com/phpcan/phpcan/tarball/gh-pages
     2. Extract tarball to /tmp directory
     3. Create PHP script with following content (replace '/tmp/phpcan-phpcan-f4b83b2' with correct value):
+    4. Start this script with your PHP cli and point your browser to http://localhost:4567/index.html
 
 .. code-block:: php
 
@@ -365,10 +366,7 @@ Here is an example how to implement a HTTP service that servs static content.
     );
     
     ?>
-    
-    4. Start this script with your PHP cli and point your browser to http://localhost:4567/index.html
-    
-    That's it.
+   
     
 To be continued...
 ------------------
