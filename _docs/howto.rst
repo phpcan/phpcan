@@ -333,5 +333,44 @@ content is stored. Please note that uploaded files (`tmp_name`) will be cleaned 
 therefor you must copy or move this files within request handler manually to be able to access it within your application.
 
 
+Static server example
+---------------------
+
+Here is an example how to implement a HTTP service that servs static content. 
+    1. Download PHP Can pages tarball from https://github.com/phpcan/phpcan/tarball/gh-pages
+    2. Extract tarball to /tmp directory
+    3. Create PHP script with following content (replace '/tmp/phpcan-phpcan-f4b83b2' with correct value):
+
+.. code-block:: php
+
+    <?php
+
+    use \Can\Server;
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
+    
+    (new Server(
+        '127.0.0.1', 4567, 
+        "time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error\n")
+    )->start(
+        new Router([
+            new Route(
+                '/<file:path>',
+                function (Request $request, array $args) {
+                    return $request->sendFile($args['file'], '/tmp/phpcan-phpcan-f4b83b2');
+                },
+                (Route::METHOD_GET|Route::METHOD_HEAD)
+            )
+        ])
+    );
+    
+    ?>
+    
+    4. Start this script with your PHP cli and point your browser to http://localhost:4567/index.html
+    
+    That's it.
+    
+
 To be continued...
 ------------------
