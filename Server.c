@@ -561,7 +561,7 @@ static PHP_METHOD(CanServer, __construct)
             "#Version: 1.0\n#Date: %s\n#Software: %s, version %s\n#"
             "Remark: Server binded to %s on port %d\n#"
             "Remark: W3C Extended Log File Format\n#Fields: %s",
-            date, PHP_CAN_SERVER_NAME, PHP_CAN_SERVER_VERSION, addr, (int)port, server->logformat
+            date, PHP_CAN_SERVER_NAME, PHP_CAN_VERSION, addr, (int)port, server->logformat
         );
         WRITELOG(server, msg, len);
         efree(msg);
