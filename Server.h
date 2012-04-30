@@ -37,7 +37,6 @@
 #include "Exception.h"
 
 #define PHP_CAN_SERVER_NAME    "PHP Can HTTP Server"
-#define PHP_CAN_SERVER_VERSION "0.1.0"
 
 #define PHP_CAN_SERVER_RESPONSE_STATUS_NONE    0
 #define PHP_CAN_SERVER_RESPONSE_STATUS_SENDING 1
