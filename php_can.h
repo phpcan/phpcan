@@ -21,14 +21,13 @@
 
 #include "zend.h"
 #include "zend_interfaces.h"
+#include "version.h"
 
 #include <evhttp.h>
 
 extern zend_module_entry can_module_entry;
 #define can_module_ptr &can_module_entry 
 #define phpext_can_ptr can_module_ptr
-
-#define PHP_CAN_VERSION "0.1.0"
 
 #define PHP_CAN_NS "Can"
 #define PHP_CAN_SERVER_NS ZEND_NS_NAME(PHP_CAN_NS, "Server")
