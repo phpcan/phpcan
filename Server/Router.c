@@ -128,10 +128,10 @@ static void add_route(struct php_can_server_router *router,
  */
 static PHP_METHOD(CanServerRouter, __construct)
 {
-    zval *routes;
+    zval *routes = NULL;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "a", &routes)) {
+            "|a", &routes)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -144,25 +144,30 @@ static PHP_METHOD(CanServerRouter, __construct)
     struct php_can_server_router *router = (struct php_can_server_router*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    zval **zroute;
-    PHP_CAN_FOREACH(routes, zroute) {
-        
-        if (Z_TYPE_PP(zroute) != IS_OBJECT || Z_OBJCE_PP(zroute) != ce_can_server_route) {
-            php_can_throw_exception(
-                ce_can_InvalidParametersException TSRMLS_CC,
-                "Route must be instance of '%s'", ce_can_server_route->name
-            );
-            return;
-        }
-                
-        struct php_can_server_route *route = (struct php_can_server_route*)
-                zend_object_store_get_object((*zroute) TSRMLS_CC);
-        
-        add_route(router, route, numkey TSRMLS_CC);
-    }
+    if (routes != NULL) {
+        zval **zroute;
+        PHP_CAN_FOREACH(routes, zroute) {
 
-    zval_add_ref(&routes);
-    router->routes = routes;
+            if (Z_TYPE_PP(zroute) != IS_OBJECT || Z_OBJCE_PP(zroute) != ce_can_server_route) {
+                php_can_throw_exception(
+                    ce_can_InvalidParametersException TSRMLS_CC,
+                    "Route must be instance of '%s'", ce_can_server_route->name
+                );
+                return;
+            }
+
+            struct php_can_server_route *route = (struct php_can_server_route*)
+                    zend_object_store_get_object((*zroute) TSRMLS_CC);
+
+            add_route(router, route, numkey TSRMLS_CC);
+        }
+
+        zval_add_ref(&routes);
+        router->routes = routes;
+    } else {
+        MAKE_STD_ZVAL(router->routes);
+        array_init(router->routes);
+    }
 }
 
 /**
@@ -198,6 +203,9 @@ static PHP_METHOD(CanServerRouter, addRoute)
     
 }
 
+/**
+ * Return the current element
+ */
 static PHP_METHOD(CanServerRouter, current)
 {
     struct php_can_server_router *router = (struct php_can_server_router*)
@@ -210,6 +218,9 @@ static PHP_METHOD(CanServerRouter, current)
     RETURN_FALSE;
 }
 
+/**
+ * Return the key of the current element
+ */
 static PHP_METHOD(CanServerRouter, key)
 {
     struct php_can_server_router *router = (struct php_can_server_router*)
@@ -218,6 +229,9 @@ static PHP_METHOD(CanServerRouter, key)
     RETURN_LONG(router->pos);
 }
 
+/**
+ * Move forward to next element
+ */
 static PHP_METHOD(CanServerRouter, next)
 {
     struct php_can_server_router *router = (struct php_can_server_router*)
@@ -226,6 +240,9 @@ static PHP_METHOD(CanServerRouter, next)
     router->pos++;
 }
 
+/**
+ * Rewind the Iterator to the first element
+ */
 static PHP_METHOD(CanServerRouter, rewind)
 {
     struct php_can_server_router *router = (struct php_can_server_router*)
@@ -234,6 +251,9 @@ static PHP_METHOD(CanServerRouter, rewind)
     router->pos = 0;
 }
 
+/**
+ * Checks if current position is valid
+ */
 static PHP_METHOD(CanServerRouter, valid)
 {
     struct php_can_server_router *router = (struct php_can_server_router*)
