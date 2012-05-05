@@ -481,15 +481,16 @@ static void request_handler(struct evhttp_request *req, void *arg)
  */
 static PHP_METHOD(CanServer, __construct)
 {
-    zval *object = getThis();
-    struct php_can_server *server;
-    char *addr, *logformat = NULL;
-    int addr_len, logformat_len = 0, num_args = ZEND_NUM_ARGS();
-    long port;
-    zval *zlogfile = NULL;
-
-    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, num_args TSRMLS_CC,
-            "sl|sz", &addr, &addr_len, &port, &logformat, &logformat_len, &zlogfile)) {
+    zval *addr, *port, *logformat = NULL, *zlogfile = NULL;
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "zz|zz", &addr, &port, &logformat, &zlogfile)
+        || Z_TYPE_P(addr) != IS_STRING
+        || Z_STRLEN_P(addr) == 0
+        || Z_TYPE_P(port) != IS_LONG
+        || Z_LVAL_P(port) < 1
+        || (logformat && (Z_TYPE_P(logformat) != IS_STRING || Z_STRLEN_P(logformat) == 0))
+        || (zlogfile && Z_TYPE_P(zlogfile) != IS_RESOURCE)
+    ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -499,7 +500,8 @@ static PHP_METHOD(CanServer, __construct)
         return;
     }
     
-    server = (struct php_can_server*)zend_object_store_get_object(object TSRMLS_CC);
+    struct php_can_server *server = (struct php_can_server*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
 
     if (server->http) {
         /* called __construct() twice, bail out */
@@ -509,11 +511,11 @@ static PHP_METHOD(CanServer, __construct)
     event_init();
 
     // try to bind server on given ip and port
-    if ((server->http = evhttp_start(addr, port)) == NULL) {
+    if ((server->http = evhttp_start(Z_STRVAL_P(addr), Z_LVAL_P(port))) == NULL) {
         php_can_throw_exception(
             ce_can_ServerBindingException TSRMLS_CC,
-            "Error binding server on %s port %d",
-            addr, (int)port
+            "Error binding server on %s port %ld",
+            Z_STRVAL_P(addr), Z_LVAL_P(port)
         );
         return;
     }
@@ -534,12 +536,12 @@ static PHP_METHOD(CanServer, __construct)
     // set timeout to a reasonably short value for performance
     evhttp_set_timeout(server->http, 10);
 
-    server->addr = estrndup(addr, addr_len);
-    server->port = port;
+    server->addr = estrndup(Z_STRVAL_P(addr), Z_STRLEN_P(addr));
+    server->port = Z_LVAL_P(port);
     server->running = 0;
-    if (logformat_len > 0) {
-        server->logformat = estrndup(logformat, logformat_len);
-        server->logformat_len = logformat_len;
+    if (logformat != NULL)  {
+        server->logformat = estrndup(Z_STRVAL_P(logformat), Z_STRLEN_P(logformat));
+        server->logformat_len = Z_STRLEN_P(logformat);
     }
     if (zlogfile != NULL) {
         if (Z_REFCOUNT_P(zlogfile) == 1) {
@@ -547,7 +549,7 @@ static PHP_METHOD(CanServer, __construct)
         }
         php_stream_from_zval_no_verify(server->logfile, &zlogfile);
     }
-    if (logformat_len > 0) {
+    if (logformat != NULL) {
         
         if (FAILURE != php_can_strpos(server->logformat, "x-reqnum", 0)) {
             request_counter_used = 1;
@@ -559,9 +561,9 @@ static PHP_METHOD(CanServer, __construct)
              *date = php_format_date("Y-m-d H:i:s", sizeof("Y-m-d H:i:s"), (long)now, 1 TSRMLS_CC);
         int len = spprintf(&msg, 0,
             "#Version: 1.0\n#Date: %s\n#Software: %s, version %s\n#"
-            "Remark: Server binded to %s on port %d\n#"
+            "Remark: Server binded to %s on port %ld\n#"
             "Remark: W3C Extended Log File Format\n#Fields: %s",
-            date, PHP_CAN_SERVER_NAME, PHP_CAN_VERSION, addr, (int)port, server->logformat
+            date, PHP_CAN_SERVER_NAME, PHP_CAN_VERSION, server->addr, server->port, server->logformat
         );
         WRITELOG(server, msg, len);
         efree(msg);

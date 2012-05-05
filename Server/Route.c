@@ -35,7 +35,7 @@ static zend_object_value server_route_ctor(zend_class_entry *ce TSRMLS_DC)
     route->regexp = NULL;
     route->route = NULL;
     route->casts = NULL;
-    retval.handle = zend_objects_store_put(route,
+    retval.handle = zend_objects_store_put(route,       
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_route_dtor,
             NULL TSRMLS_CC);
@@ -76,17 +76,17 @@ static void server_route_dtor(void *object TSRMLS_DC)
  */
 static PHP_METHOD(CanServerRoute, __construct)
 {
-    char *route;
-    zval *handler;
-    int route_len;
-    long methods = PHP_CAN_SERVER_ROUTE_METHOD_GET;
-
+    zval *uri = NULL, *handler = NULL, *methods = NULL;
+    
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "sz|l", &route, &route_len, &handler, &methods)) {
+            "zz|z", &uri, &handler, &methods) 
+            || Z_TYPE_P(uri) != IS_STRING 
+            || (methods && (Z_TYPE_P(methods) != IS_LONG || Z_LVAL_P(methods) < 1))
+    ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(string $route, mixed $handler[, int $methods = Route::METHOD_GET])",
+            "%s%s%s(string $uri, callable $handler[, int $methods = Route::METHOD_GET])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
@@ -110,18 +110,29 @@ static PHP_METHOD(CanServerRoute, __construct)
     
     zval_add_ref(&handler);
     request->handler = handler;
+
+    long meth = methods != NULL ? Z_LVAL_P(methods) : PHP_CAN_SERVER_ROUTE_METHOD_GET;
+    if (meth && meth & PHP_CAN_SERVER_ROUTE_METHOD_ALL) {
+        request->methods = meth;
+    } else {
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "Unexpected methods",
+            func_name
+        );
+    }
     
     MAKE_STD_ZVAL(request->casts);
     array_init(request->casts);
     
-    if (FAILURE != php_can_strpos(route, "<", 0) && FAILURE != php_can_strpos(route, ">", 0)) {
+    if (FAILURE != php_can_strpos(Z_STRVAL_P(uri), "<", 0) && FAILURE != php_can_strpos(Z_STRVAL_P(uri), ">", 0)) {
         int i;
-        for (i = 0; i < route_len; i++) {
-            if (route[i] != '<') {
-                spprintf(&request->regexp, 0, "%s%c", request->regexp == NULL ? "" : request->regexp, route[i]);
+        for (i = 0; i < Z_STRLEN_P(uri); i++) {
+            if (Z_STRVAL_P(uri)[i] != '<') {
+                spprintf(&request->regexp, 0, "%s%c", request->regexp == NULL ? "" : request->regexp, Z_STRVAL_P(uri)[i]);
             } else {
-                int y = php_can_strpos(route, ">", i);
-                char *name = php_can_substr(route, i + 1, y - (i + 1));
+                int y = php_can_strpos(Z_STRVAL_P(uri), ">", i);
+                char *name = php_can_substr(Z_STRVAL_P(uri), i + 1, y - (i + 1));
                 int pos = php_can_strpos(name, ":", 0);
                 if (FAILURE != pos) {
                     char *var = php_can_substr(name, 0, pos);
@@ -153,17 +164,7 @@ static PHP_METHOD(CanServerRoute, __construct)
         spprintf(&request->regexp, 0, "\1^%s$\1", request->regexp);
     }
     
-    request->route = estrndup(route, route_len);
-    
-    if (methods & PHP_CAN_SERVER_ROUTE_METHOD_ALL) {
-        request->methods = methods;
-    } else {
-        php_can_throw_exception(
-            ce_can_InvalidParametersException TSRMLS_CC,
-            "Unexpected methods",
-            func_name
-        );
-    }
+    request->route = estrndup(Z_STRVAL_P(uri), Z_STRLEN_P(uri));
 
 }
 
@@ -172,9 +173,9 @@ static PHP_METHOD(CanServerRoute, __construct)
  */
 static PHP_METHOD(CanServerRoute, getUri)
 {
-    zend_bool as_regexp = 0;
+    zval *as_regexp = NULL;
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "|b", &as_regexp)) {
+            "|z", &as_regexp) || (as_regexp && Z_TYPE_P(as_regexp) != IS_BOOL)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -187,7 +188,7 @@ static PHP_METHOD(CanServerRoute, getUri)
     struct php_can_server_route *route = (struct php_can_server_route*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
-    if (as_regexp) {
+    if (as_regexp && Z_BVAL_P(as_regexp)) {
         if (route->regexp != NULL) {
             char *regexp = php_can_substr(route->regexp, 1, strlen(route->regexp) - 2);
             RETVAL_STRING(regexp, 0);
@@ -205,9 +206,9 @@ static PHP_METHOD(CanServerRoute, getUri)
  */
 static PHP_METHOD(CanServerRoute, getMethod)
 {
-    zend_bool as_regexp = 0;
+    zval *as_regexp = NULL;
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "|b", &as_regexp)) {
+            "|z", &as_regexp) || (as_regexp && Z_TYPE_P(as_regexp) != IS_BOOL)) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -220,7 +221,7 @@ static PHP_METHOD(CanServerRoute, getMethod)
     struct php_can_server_route *route = (struct php_can_server_route*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
-    if (as_regexp) {
+    if (as_regexp && Z_BVAL_P(as_regexp)) {
         char *retval = NULL;
         if (route->methods & PHP_CAN_SERVER_ROUTE_METHOD_GET) {
             spprintf(&retval, 0, "%s%s%s", (retval == NULL ? "" : retval), 
@@ -307,6 +308,7 @@ static void server_route_init(TSRMLS_D)
     PHP_CAN_REGISTER_CLASS_CONST_LONG(ce_can_server_route, "METHOD_TRACE",   PHP_CAN_SERVER_ROUTE_METHOD_TRACE);
     PHP_CAN_REGISTER_CLASS_CONST_LONG(ce_can_server_route, "METHOD_CONNECT", PHP_CAN_SERVER_ROUTE_METHOD_CONNECT);
     PHP_CAN_REGISTER_CLASS_CONST_LONG(ce_can_server_route, "METHOD_PATCH",   PHP_CAN_SERVER_ROUTE_METHOD_PATCH);
+    PHP_CAN_REGISTER_CLASS_CONST_LONG(ce_can_server_route, "METHOD_ALL",     PHP_CAN_SERVER_ROUTE_METHOD_ALL);
 }
 
 PHP_MINIT_FUNCTION(can_server_route)

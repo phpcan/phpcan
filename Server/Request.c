@@ -167,12 +167,25 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
         ZVAL_LONG(retval, (int)request->req->remote_port);
         Z_SET_REFCOUNT_P(retval, 0);
 
-    } else if (Z_STRLEN_P(member) == (sizeof("headers") - 1)
-            && !memcmp(Z_STRVAL_P(member), "headers", Z_STRLEN_P(member))) {
+    } else if (Z_STRLEN_P(member) == (sizeof("request_headers") - 1)
+            && !memcmp(Z_STRVAL_P(member), "request_headers", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
         array_init(retval);
         for (header = ((request->req->input_headers)->tqh_first);
+             header; 
+             header = ((header)->next.tqe_next)
+        ) {
+            add_assoc_string(retval, header->key, header->value, 1);
+        }
+        Z_SET_REFCOUNT_P(retval, 0);
+        
+    } else if (Z_STRLEN_P(member) == (sizeof("response_headers") - 1)
+            && !memcmp(Z_STRVAL_P(member), "response_headers", Z_STRLEN_P(member))) {
+
+        MAKE_STD_ZVAL(retval);
+        array_init(retval);
+        for (header = ((request->req->output_headers)->tqh_first);
              header; 
              header = ((header)->next.tqe_next)
         ) {
@@ -236,18 +249,18 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
         }
         Z_SET_REFCOUNT_P(retval, 0);
 
-    } else if (Z_STRLEN_P(member) == (sizeof("status") - 1)
-            && !memcmp(Z_STRVAL_P(member), "status", Z_STRLEN_P(member))) {
-
-        MAKE_STD_ZVAL(retval);
-        ZVAL_LONG(retval, (int)request->status);
-        Z_SET_REFCOUNT_P(retval, 0);
-
     } else if (Z_STRLEN_P(member) == (sizeof("time") - 1)
             && !memcmp(Z_STRVAL_P(member), "time", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
         ZVAL_DOUBLE(retval, request->time);
+        Z_SET_REFCOUNT_P(retval, 0);
+        
+    } else if (Z_STRLEN_P(member) == (sizeof("response_status") - 1)
+            && !memcmp(Z_STRVAL_P(member), "response_status", Z_STRLEN_P(member))) {
+
+        MAKE_STD_ZVAL(retval);
+        ZVAL_LONG(retval, request->response_status);
         Z_SET_REFCOUNT_P(retval, 0);
 
     } else {
@@ -310,7 +323,17 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
     ) {
         add_assoc_string(zv, header->key, header->value, 1);
     }
-    zend_hash_update(props, "headers", sizeof("headers"), &zv, sizeof(zval), NULL);
+    zend_hash_update(props, "request_headers", sizeof("request_headers"), &zv, sizeof(zval), NULL);
+    
+    MAKE_STD_ZVAL(zv);
+    array_init(zv);
+    for (header = ((request->req->output_headers)->tqh_first);
+         header; 
+         header = ((header)->next.tqe_next)
+    ) {
+        add_assoc_string(zv, header->key, header->value, 1);
+    }
+    zend_hash_update(props, "response_headers", sizeof("response_headers"), &zv, sizeof(zval), NULL);
 
     MAKE_STD_ZVAL(zv);
     array_init(zv);
@@ -364,6 +387,10 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
     ZVAL_DOUBLE(zv, request->time);
     zend_hash_update(props, "time", sizeof("time"), &zv, sizeof(zval), NULL);
     
+    MAKE_STD_ZVAL(zv);
+    ZVAL_LONG(zv, request->response_status);
+    zend_hash_update(props, "response_status", sizeof("response_status"), &zv, sizeof(zval), NULL);
+    
     return props;
 }
 
@@ -380,11 +407,10 @@ static PHP_METHOD(CanServerRequest, __construct)
  */
 static PHP_METHOD(CanServerRequest, findRequestHeader)
 {
-    char *header;
-    int header_len;
-
+    zval *header = NULL;
+    
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "s", &header, &header_len)) {
+            "z", &header) || Z_TYPE_P(header) != IS_STRING || Z_STRLEN_P(header) == 0) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -397,7 +423,7 @@ static PHP_METHOD(CanServerRequest, findRequestHeader)
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    const char *value =evhttp_find_header(request->req->input_headers, (const char*)header);
+    const char *value =evhttp_find_header(request->req->input_headers, (const char*)Z_STRVAL_P(header));
     if (value == NULL) {
         RETURN_FALSE;
     }
@@ -421,16 +447,17 @@ static PHP_METHOD(CanServerRequest, getRequestBody)
 
 /**
  * Add response header
- *
- *
  */
 static PHP_METHOD(CanServerRequest, addResponseHeader)
 {
-    char *header, *value;
-    int header_len, value_len;
-
+    zval *header, *value;
+    
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "ss", &header, &header_len, &value, &value_len)) {
+            "zz", &header, &value) 
+        || Z_TYPE_P(header) != IS_STRING
+        || Z_STRLEN_P(header) == 0
+        || Z_TYPE_P(value) != IS_STRING
+    ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -443,7 +470,7 @@ static PHP_METHOD(CanServerRequest, addResponseHeader)
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (evhttp_add_header(request->req->output_headers, header, value) != 0) {
+    if (evhttp_add_header(request->req->output_headers, Z_STRVAL_P(header), Z_STRVAL_P(value)) != 0) {
         RETURN_FALSE;
     }
     RETURN_TRUE;
@@ -451,16 +478,17 @@ static PHP_METHOD(CanServerRequest, addResponseHeader)
 
 /**
  * Remove response header
- *
- *
  */
 static PHP_METHOD(CanServerRequest, removeResponseHeader)
 {
-    char *header, *value;
-    int header_len = 0, value_len = 0;
-
+    zval *header, *value = NULL;
+    
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "s|s", &header, &header_len, &value, &value_len) || header_len == 0) {
+            "z|z", &header, &value) 
+        || Z_TYPE_P(header) != IS_STRING
+        || Z_STRLEN_P(header) == 0
+        || (value != NULL && (Z_TYPE_P(value) != IS_STRING || Z_STRLEN_P(value) == 0))
+    ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -473,33 +501,50 @@ static PHP_METHOD(CanServerRequest, removeResponseHeader)
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
-    if (value_len > 0) {
-        char *existing_value = (char *)evhttp_find_header(request->req->output_headers, value);
-        if (NULL != existing_value && 0 == strcmp(value, existing_value)
-           && 0 == evhttp_remove_header(request->req->output_headers, header)
+    if (value != NULL) {
+        char *existing_value = (char *)evhttp_find_header(request->req->output_headers, Z_STRVAL_P(header));
+        if (NULL != existing_value && 0 == strcmp(Z_STRVAL_P(value), existing_value)
+           && 0 == evhttp_remove_header(request->req->output_headers, Z_STRVAL_P(header))
         ) {
             RETURN_TRUE;
         }
         RETURN_FALSE;
     } 
 
-    if (evhttp_remove_header(request->req->output_headers, header) != 0) {
+    if (evhttp_remove_header(request->req->output_headers, Z_STRVAL_P(header)) != 0) {
         RETURN_FALSE;
     }
     RETURN_TRUE;
 }
 
 /**
+ * Get response headers
+ */
+static PHP_METHOD(CanServerRequest, getResponseHeaders)
+{
+    struct evkeyval *header;
+    struct php_can_server_request *request = (struct php_can_server_request*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    array_init(return_value);
+    
+    for (header = ((request->req->output_headers)->tqh_first);
+         header; 
+         header = ((header)->next.tqe_next)
+    ) {
+        add_assoc_string(return_value, header->key, header->value, 1);
+    }
+}
+
+/**
  * Set response status
- *
- *
  */
 static PHP_METHOD(CanServerRequest, setResponseStatus)
 {
-    long status;
+    zval *status;
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "l", &status)) {
+            "z", &status) || Z_TYPE_P(status) != IS_LONG) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -509,10 +554,10 @@ static PHP_METHOD(CanServerRequest, setResponseStatus)
         return;
     }
     
-    if (status < 100 || status > 599) {
+    if (Z_LVAL_P(status) < 100 || Z_LVAL_P(status) > 599) {
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "Expection valid HTTP status (100-599)"
+            "Unexpected HTTP status, expecting range is 100-599"
         );
         return;
     }
@@ -520,7 +565,7 @@ static PHP_METHOD(CanServerRequest, setResponseStatus)
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    request->response_status = status;
+    request->response_status = Z_LVAL_P(status);
 }
 
 /**
@@ -528,16 +573,18 @@ static PHP_METHOD(CanServerRequest, setResponseStatus)
  */
 static PHP_METHOD(CanServerRequest, redirect)
 {
-    char *location;
-    int *location_len = 0;
-    long status = 302;
-
+    zval *location, *status = NULL;
+    
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "s|l", &location, &location_len, &status) || location_len == 0 || status < 300 || status > 399) {
+            "z|z", &location, &status) 
+        || Z_TYPE_P(location) != IS_STRING
+        || Z_STRLEN_P(location) == 0 
+        || (status && (Z_TYPE_P(status) != IS_LONG || Z_LVAL_P(status) < 300 || Z_LVAL_P(status) > 399))
+    ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(string $location[, int status = 302])",
+            "%s%s%s(string $location[, int $status = 302])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
@@ -546,10 +593,10 @@ static PHP_METHOD(CanServerRequest, redirect)
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    if (evhttp_add_header(request->req->output_headers, "Location", location) != 0) {
+    if (evhttp_add_header(request->req->output_headers, "Location", Z_STRVAL_P(location)) != 0) {
         RETURN_FALSE;
     }
-    request->response_status = status;
+    request->response_status = status ? Z_LVAL_P(status) : 302;
     RETURN_TRUE;
 }
 
@@ -558,20 +605,27 @@ static PHP_METHOD(CanServerRequest, redirect)
  */
 static PHP_METHOD(CanServerRequest, setCookie)
 {
-    char *name, *value, *path, *domain;
-    int name_len = 0, value_len = 0, path_len = 0, domain_len = 0;
-    long expires = 0;
-    zend_bool secure = 0, httponly= 0, url_encode = 0; 
-
+    zval *name, *value, 
+         *expires = NULL, *path = NULL, *domain = NULL, 
+         *secure = NULL, *httponly = NULL, *url_encode = NULL;
+    
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "ss|slssbb", &name, &name_len, &value, &value_len, &expires, &path, &path_len, 
-            &domain, &domain_len, &secure, &httponly) || name_len == 0
+            "zz|zzzzzz", &name, &value, &expires, &path, &domain, &secure, &httponly, &url_encode) 
+        || Z_TYPE_P(name) != IS_STRING
+        || Z_STRLEN_P(name) == 0
+        || Z_TYPE_P(value) != IS_STRING
+        || (expires && (Z_TYPE_P(expires) != IS_LONG || Z_LVAL_P(expires) < 0))
+        || (path && Z_TYPE_P(path) != IS_STRING)
+        || (domain && Z_TYPE_P(domain) != IS_STRING)
+        || (secure && Z_TYPE_P(secure) != IS_BOOL)
+        || (httponly && Z_TYPE_P(httponly) != IS_BOOL)
+        || (url_encode && Z_TYPE_P(url_encode) != IS_BOOL)
     ) {
         const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $name [, string $value [, int $expire = 0 [, string $path "
-            "[, string $domain [, bool $secure = false [, bool $httponly = false ]]]]]])",
+            "[, string $domain [, bool $secure = false [, bool $httponly = false [, bool $url_encode = false]]]]]]])",
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
@@ -581,69 +635,69 @@ static PHP_METHOD(CanServerRequest, setCookie)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     char *cookie, *encoded_value = NULL;
-    int len = name_len;
+    int len = Z_STRLEN_P(name);
     char *dt;
-    int result;
 
-    if (name && strpbrk(name, "=,; \t\r\n\013\014") != NULL) {   /* man isspace for \013 and \014 */
+    if (strpbrk(Z_STRVAL_P(name), "=,; \t\r\n\013\014") != NULL) {   /* man isspace for \013 and \014 */
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "Cookie names cannot contain any of the following '=,; \\t\\r\\n\\013\\014'"
+            "Cookie names cannot contain any of the following characters '=,; \\t\\r\\n\\013\\014'"
         );
         return;
     }
 
-    if (!url_encode && value && strpbrk(value, ",; \t\r\n\013\014") != NULL) { /* man isspace for \013 and \014 */
+    if ((!url_encode || Z_BVAL_P(url_encode) == 0) 
+            && Z_STRLEN_P(value) > 0 && strpbrk(Z_STRVAL_P(value), ",; \t\r\n\013\014") != NULL) { /* man isspace for \013 and \014 */
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "Cookie values cannot contain any of the following '=,; \\t\\r\\n\\013\\014'"
+            "Cookie values cannot contain any of the following characters '=,; \\t\\r\\n\\013\\014'"
         );
         return;
     }
 
-    if (value && url_encode) {
+    if (Z_STRLEN_P(value) > 0 && url_encode && Z_BVAL_P(url_encode)) {
         int encoded_value_len;
-        encoded_value = php_url_encode(value, value_len, &encoded_value_len);
+        encoded_value = php_url_encode(Z_STRVAL_P(value), Z_STRLEN_P(value), &encoded_value_len);
         len += encoded_value_len;
-    } else if ( value ) {
-        encoded_value = estrdup(value);
-        len += value_len;
+    } else if ( Z_STRLEN_P(value) > 0 ) {
+        encoded_value = estrndup(Z_STRVAL_P(value), Z_STRLEN_P(value));
+        len += Z_STRLEN_P(value);
     }
     if (path) {
-        len += path_len;
+        len += Z_STRLEN_P(path);
     }
     if (domain) {
-        len += domain_len;
+        len += Z_STRLEN_P(domain);
     }
 
     cookie = emalloc(len + 100);
 
-    if (value && value_len == 0) {
+    if (Z_STRLEN_P(value) == 0) {
         /* 
          * MSIE doesn't delete a cookie when you set it to a null value
          * so in order to force cookies to be deleted, even on MSIE, we
          * pick an expiry date in the past
          */
         dt = php_format_date("D, d-M-Y H:i:s T", sizeof("D, d-M-Y H:i:s T")-1, 1, 0 TSRMLS_CC);
-        snprintf(cookie, len + 100, "%s=deleted; expires=%s", name, dt);
+        snprintf(cookie, len + 100, "%s=deleted; expires=%s", Z_STRVAL_P(name), dt);
         efree(dt);
     } else {
-        snprintf(cookie, len + 100, "%s=%s", name, value ? encoded_value : "");
-        if (expires > 0) {
+        snprintf(cookie, len + 100, "%s=%s", Z_STRVAL_P(name), Z_STRLEN_P(value) > 0 ? encoded_value : "");
+        if (expires && Z_LVAL_P(expires) > 0) {
             const char *p;
             strlcat(cookie, "; expires=", len + 100);
-            dt = php_format_date("D, d-M-Y H:i:s T", sizeof("D, d-M-Y H:i:s T")-1, expires, 0 TSRMLS_CC);
+            dt = php_format_date("D, d-M-Y H:i:s T", sizeof("D, d-M-Y H:i:s T")-1, Z_LVAL_P(expires), 0 TSRMLS_CC);
             /* check to make sure that the year does not exceed 4 digits in length */
             p = zend_memrchr(dt, '-', strlen(dt));
             if (!p || *(p + 5) != ' ') {
-                    efree(dt);
-                    efree(cookie);
-                    efree(encoded_value);
-                    php_can_throw_exception(
-                        ce_can_InvalidParametersException TSRMLS_CC,
-                        "Expiry date cannot have a year greater then 9999"
-                    );
-                    return;
+                efree(dt);
+                efree(cookie);
+                efree(encoded_value);
+                php_can_throw_exception(
+                    ce_can_InvalidParametersException TSRMLS_CC,
+                    "Expiry date cannot have a year greater then 9999"
+                );
+                return;
             }
             strlcat(cookie, dt, len + 100);
             efree(dt);
@@ -654,18 +708,18 @@ static PHP_METHOD(CanServerRequest, setCookie)
         efree(encoded_value);
     }
 
-    if (path && path_len > 0) {
+    if (path && Z_STRLEN_P(path) > 0) {
         strlcat(cookie, "; path=", len + 100);
-        strlcat(cookie, path, len + 100);
+        strlcat(cookie, Z_STRVAL_P(path), len + 100);
     }
-    if (domain && domain_len > 0) {
+    if (domain && Z_STRLEN_P(domain) > 0) {
         strlcat(cookie, "; domain=", len + 100);
-        strlcat(cookie, domain, len + 100);
+        strlcat(cookie, Z_STRVAL_P(domain), len + 100);
     }
-    if (secure) {
+    if (secure && Z_BVAL_P(secure)) {
         strlcat(cookie, "; secure", len + 100);
     }
-    if (httponly) {
+    if (httponly && Z_BVAL_P(httponly)) {
         strlcat(cookie, "; httponly", len + 100);
     }
     
@@ -762,20 +816,22 @@ static PHP_METHOD(CanServerRequest, sendFile)
     }
     efree(tmppath);
     
-    // requested file exists, we check if file is within root path, 
+    // requested file exists, we check if file is within givet root path, 
     // otherwise we send 404 File Not Found to prevent giving informations 
     // about existence of this file on the server machine. This check prevents 
     // serving of the symlinks to outside of the root path as well.
-    if (0 != php_can_strpos(filepath, rootpath, 0)) {
-        php_can_throw_exception_code(
-            ce_can_HTTPError TSRMLS_CC, 404, "Requested file '%s' is not within root path '%s'", filepath, rootpath
-        );
-        efree(filepath);
+    if (rootpath) {
+        if (0 != php_can_strpos(filepath, rootpath, 0)) {
+            php_can_throw_exception_code(
+                ce_can_HTTPError TSRMLS_CC, 404, 
+                    "Requested file '%s' is not within root path '%s'", filepath, rootpath
+            );
+            efree(filepath);
+            efree(rootpath);
+            return;
+        }
         efree(rootpath);
-        return;
     }
-    
-    efree(rootpath);
     
 #ifdef R_OK
     // requested path exists and is within root path, check for read permissions
@@ -1146,6 +1202,7 @@ static zend_function_entry server_request_methods[] = {
     PHP_ME(CanServerRequest, getRequestBody,       NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, addResponseHeader,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, removeResponseHeader, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, getResponseHeaders,   NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, setResponseStatus,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, redirect,             NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, setCookie,            NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
@@ -1160,10 +1217,10 @@ static void server_request_init(TSRMLS_D)
     server_request_obj_handlers.read_property = read_property;
     server_request_obj_handlers.get_properties = get_properties;
     
-    // class \Can\Server\Request
+    // class \Can\Server\RequestContext
     PHP_CAN_REGISTER_CLASS(
         &ce_can_server_request,
-        ZEND_NS_NAME(PHP_CAN_SERVER_NS, "Request"),
+        ZEND_NS_NAME(PHP_CAN_SERVER_NS, "RequestContext"),
         server_request_ctor,
         server_request_methods
     );
