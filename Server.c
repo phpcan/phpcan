@@ -374,7 +374,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 Z_ADDREF_P(args[1]);
 
                 if (call_user_function(EG(function_table), NULL, route->handler, &retval, 2, args TSRMLS_CC) == SUCCESS) {
-                    if (request->status != PHP_CAN_SERVER_RESPONSE_STATUS_SENT) {
+                    if (request->status == PHP_CAN_SERVER_RESPONSE_STATUS_NONE) {
                         if (request->response_status == 0) {
                             request->response_status = 200;
                         }
@@ -561,7 +561,7 @@ static PHP_METHOD(CanServer, __construct)
              *date = php_format_date("Y-m-d H:i:s", sizeof("Y-m-d H:i:s"), (long)now, 1 TSRMLS_CC);
         int len = spprintf(&msg, 0,
             "#Version: 1.0\n#Date: %s\n#Software: %s, version %s\n#"
-            "Remark: Server binded to %s on port %ld\n#"
+            "Remark: Server binded to %s on port %d\n#"
             "Remark: W3C Extended Log File Format\n#Fields: %s",
             date, PHP_CAN_SERVER_NAME, PHP_CAN_VERSION, server->addr, server->port, server->logformat
         );
