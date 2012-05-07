@@ -332,7 +332,79 @@ and sets HTTP response status to 302 (by default) or any provided status in a va
 <li><strong>$root</strong> (<em>string</em>) &#8211; Root directory where file $filename to be expected.</li>
 <li><strong>$mimetype</strong> (<em>string</em>) &#8211; Add this mimetype instead of automatically guesed one.</li>
 <li><strong>$download</strong> (<em>bool|string</em>) &#8211; Force download of the file. If <tt class="docutils literal"><span class="pre">true</span></tt>, the filename will be determine automatically, if <tt class="docutils literal"><span class="pre">string</span></tt>, the filename will be set to value of $download.</li>
-<li><strong>$chunksize</strong> (<em>int</em>) &#8211; The size of the chunks if chunked transfer encoding is used (Serving of files with filesize &gt;= $chunksize). Default value is 10240 bytes.</li>
+<li><strong>$chunksize</strong> (<em>int</em>) &#8211; The size of the chunks if chunked transfer encoding is used (Serving of files with filesize &gt;= $chunksize). Default value is 8192 bytes.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::sendResponseStart">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">sendResponseStart</tt><big>(</big><em>int $status</em><span class="optional">[</span>, <em>string $reason</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Can\Server\Request::sendResponseStart" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start sending a chunked encoded response to zhe client</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$status</strong> (<em>int</em>) &#8211; A valid HTTP status code (range 100-599).</li>
+<li><strong>$reason</strong> (<em>string</em>) &#8211; The reason phrase. Optional.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidOperationException</span></tt> If response already sent.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::sendResponseChunk">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">sendResponseChunk</tt><big>(</big><em>string $chunk</em><big>)</big><a class="headerlink" href="#Can\Server\Request::sendResponseChunk" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send next chunk of data to the client.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$chunk</strong> (<em>string</em>) &#8211; The chunk of data to send.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidOperationException</span></tt> If response already sent.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::sendResponseEnd">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">sendResponseEnd</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server\Request::sendResponseEnd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finalize chunked encoded response.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidOperationException</span></tt> If response already sent.</li>
 </ul>
 </td>
 </tr>
@@ -365,7 +437,7 @@ and sets HTTP response status to 302 (by default) or any provided status in a va
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on Apr 30, 2012.
+      Last updated on May 07, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

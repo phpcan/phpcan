@@ -129,6 +129,30 @@
     :param string $root: Root directory where file $filename to be expected.
     :param string $mimetype: Add this mimetype instead of automatically guesed one.
     :param bool|string $download: Force download of the file. If ``true``, the filename will be determine automatically, if ``string``, the filename will be set to value of $download.
-    :param int $chunksize: The size of the chunks if chunked transfer encoding is used (Serving of files with filesize >= $chunksize). Default value is 10240 bytes.
+    :param int $chunksize: The size of the chunks if chunked transfer encoding is used (Serving of files with filesize >= $chunksize). Default value is 8192 bytes.
+
+.. php:method:: sendResponseStart(int $status[, string $reason])
+
+	Start sending a chunked encoded response to zhe client
+	
+	:param int $status: A valid HTTP status code (range 100-599).
+	:param string $reason: The reason phrase. Optional.
+	:throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
+	:throws: * :php:class:`InvalidOperationException` If response already sent.
+	
+.. php:method:: sendResponseChunk(string $chunk)
+	
+	Send next chunk of data to the client.
+	
+	:param string $chunk: The chunk of data to send.
+	:throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
+	:throws: * :php:class:`InvalidOperationException` If response already sent.
+	
+.. php:method:: sendResponseEnd()
+
+	Finalize chunked encoded response.
+
+	:throws: * :php:class:`InvalidOperationException` If response already sent.
+
     
     

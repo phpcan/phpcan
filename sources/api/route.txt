@@ -17,7 +17,7 @@
     :param string $uri: Static or dynamic URI path.
     :param callable $handler: Request handler - any valid PHP callback
     :param int $methods: HTTP request methods bitmask this route associated with, default Route::METHOD_GET.
-    :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
+    :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
     
     The request handler must accepting :php:class:`Request` instance as first parameter and associative arguments array as second parameter
     in which you will find values of the wildcards defined within you URI path. See :ref:`tutorial-routing` for detailed information.
@@ -48,7 +48,7 @@ Example:
     Get URI path associated with this Route instance.
     
     :param bool $as_regexp: If set to ``true``, return value is a valid PCRE representation of the URI path.
-    :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
+    :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
     :returns: string
     
 .. php:method:: getMethod(bool $as_regexp = false)
@@ -56,7 +56,7 @@ Example:
     Get HTTP request method associated with this Route instance.
     
     :param bool $as_regexp: If set to ``true``, return value is a valid PCRE representation of the method(s).
-    :throws: * :php:class:`InvalidParametersException` If invalid parameters will be passed.
+    :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
     :returns: string
     
 .. php:method:: getHandler()
