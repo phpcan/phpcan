@@ -129,7 +129,7 @@
     :param string $root: Root directory where file $filename to be expected.
     :param string $mimetype: Add this mimetype instead of automatically guesed one.
     :param bool|string $download: Force download of the file. If ``true``, the filename will be determine automatically, if ``string``, the filename will be set to value of $download.
-    :param int $chunksize: The size of the chunks if chunked transfer encoding is used (Serving of files with filesize >= $chunksize). Default value is 10240 bytes.
+    :param int $chunksize: The size of the chunks if chunked transfer encoding is used (Serving of files with filesize >= $chunksize). Default value is 8192 bytes.
 
 .. php:method:: sendResponseStart(int $status[, string $reason])
 
