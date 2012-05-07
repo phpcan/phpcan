@@ -262,6 +262,14 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
         MAKE_STD_ZVAL(retval);
         ZVAL_LONG(retval, request->response_status);
         Z_SET_REFCOUNT_P(retval, 0);
+        
+    } else if (Z_STRLEN_P(member) == (sizeof("response_length") - 1)
+            && !memcmp(Z_STRVAL_P(member), "response_length", Z_STRLEN_P(member))) {
+
+        MAKE_STD_ZVAL(retval);
+        ZVAL_LONG(retval, request->response_len);
+        Z_SET_REFCOUNT_P(retval, 0);
+
 
     } else {
         std_hnd = zend_get_std_object_handlers();
@@ -390,6 +398,10 @@ static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
     MAKE_STD_ZVAL(zv);
     ZVAL_LONG(zv, request->response_status);
     zend_hash_update(props, "response_status", sizeof("response_status"), &zv, sizeof(zval), NULL);
+    
+    MAKE_STD_ZVAL(zv);
+    ZVAL_LONG(zv, request->response_len);
+    zend_hash_update(props, "response_length", sizeof("response_length"), &zv, sizeof(zval), NULL);
     
     return props;
 }
@@ -808,7 +820,8 @@ static PHP_METHOD(CanServerRequest, sendFile)
     char *filepath = get_realpath(tmppath, 0 TSRMLS_CC);
     if (filepath == NULL) {
         php_can_throw_exception_code(
-            ce_can_HTTPError TSRMLS_CC, 404, "Requested file '%s' does not exist", tmppath
+            ce_can_HTTPError TSRMLS_CC, 404, "Requested file '%s%s%s' does not exist", 
+                root_len > 0 ? root : "", filename[0] != '/' ? "/" : "", filename
         );
         efree(tmppath);
         efree(rootpath);
@@ -824,7 +837,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
         if (0 != php_can_strpos(filepath, rootpath, 0)) {
             php_can_throw_exception_code(
                 ce_can_HTTPError TSRMLS_CC, 404, 
-                    "Requested file '%s' is not within root path '%s'", filepath, rootpath
+                    "Requested file '%s' is not within root path '%s'", filename, root
             );
             efree(filepath);
             efree(rootpath);
@@ -837,7 +850,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
     // requested path exists and is within root path, check for read permissions
     if (VCWD_ACCESS(filepath, R_OK)) {
         php_can_throw_exception_code(
-            ce_can_HTTPError TSRMLS_CC, 403, "Requested file '%s' is not readable", filepath
+            ce_can_HTTPError TSRMLS_CC, 403, "Requested file '%s' is not readable", filename
         );
         efree(filepath);
         return;
@@ -856,7 +869,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
     if (!stream) {
         php_can_throw_exception(
             ce_can_RuntimeException TSRMLS_CC,
-            "Cannot read content of the file '%s'", filepath
+            "Cannot read content of the file '%s'", filename
         );
         efree(filepath);
         return;
@@ -867,7 +880,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
     if (php_stream_stat(stream, &st) < 0) {
         php_can_throw_exception(
             ce_can_RuntimeException TSRMLS_CC,
-            "Cannot stat of the file '%s'", filepath
+            "Cannot stat of the file '%s'", filename
         );
         efree(filepath);
         return;
@@ -877,7 +890,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
     // we send 403 Forbidden response to the client
     if (S_ISDIR(st.sb.st_mode)) {
         php_can_throw_exception_code(
-            ce_can_HTTPError TSRMLS_CC, 403, "Requested path '%s' is a directory", filepath
+            ce_can_HTTPError TSRMLS_CC, 403, "Requested path '%s' is a directory", filename
         );
         php_stream_close(stream);
         efree(filepath);
@@ -1158,7 +1171,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
 
                     } else {
 
-                        // send contentas chunkd transfer encoding
+                        // send content as chunked transfer encoding
                         long pos = range_from, len;
                         char *chunk;
                         while(-1 != php_stream_seek(stream, pos, SEEK_SET )) {
@@ -1196,6 +1209,114 @@ static PHP_METHOD(CanServerRequest, sendFile)
     php_stream_close(stream);
 }
 
+/**
+ * Start sending chunked response
+ */
+static PHP_METHOD(CanServerRequest, sendResponseStart)
+{
+    struct php_can_server_request *request = (struct php_can_server_request*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    if (request->status != PHP_CAN_SERVER_RESPONSE_STATUS_NONE) {
+        php_can_throw_exception(
+            ce_can_InvalidOperationException TSRMLS_CC,
+            "Invalid status"
+        );
+        return;
+    }
+    
+    zval *status, *reason = NULL;
+
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "z|z", &status, &reason) 
+        || Z_TYPE_P(status) != IS_LONG 
+        || (reason && (Z_TYPE_P(reason) != IS_STRING || Z_STRLEN_P(reason) == 0))
+    ) {
+        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "%s%s%s(int $status[, string $reason])",
+            class_name, space, get_active_function_name(TSRMLS_C)
+        );
+        return;
+    }
+    
+    if (Z_LVAL_P(status) < 100 || Z_LVAL_P(status) > 599) {
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "Unexpected HTTP status, expecting range is 100-599"
+        );
+        return;
+    }
+    
+    evhttp_send_reply_start(request->req, Z_LVAL_P(status), reason != NULL ? Z_STRVAL_P(reason) : NULL);
+
+    request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENDING;
+    request->response_len = 0;
+    request->response_status = Z_LVAL_P(status);
+}
+
+/**
+ * Send next response chunk
+ */
+static PHP_METHOD(CanServerRequest, sendResponseChunk)
+{
+    struct php_can_server_request *request = (struct php_can_server_request*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    if (request->status != PHP_CAN_SERVER_RESPONSE_STATUS_SENDING) {
+        php_can_throw_exception(
+            ce_can_InvalidOperationException TSRMLS_CC,
+            "Invalid status"
+        );
+        return;
+    }
+    
+    zval *chunk;
+
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "z", &chunk) 
+        || Z_TYPE_P(chunk) != IS_STRING 
+    ) {
+        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "%s%s%s(string $chunk)",
+            class_name, space, get_active_function_name(TSRMLS_C)
+        );
+        return;
+    }
+    
+    if (Z_STRLEN_P(chunk) > 0) {
+        struct evbuffer *buffer = evbuffer_new();
+        evbuffer_add(buffer, Z_STRVAL_P(chunk), Z_STRLEN_P(chunk));
+        evhttp_send_reply_chunk(request->req, buffer);
+        evbuffer_free(buffer);
+        request->response_len += Z_STRLEN_P(chunk);
+    }
+}
+
+/**
+ * Finalize sending chunked response
+ */
+static PHP_METHOD(CanServerRequest, sendResponseEnd)
+{
+    struct php_can_server_request *request = (struct php_can_server_request*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    if (request->status != PHP_CAN_SERVER_RESPONSE_STATUS_SENDING) {
+        php_can_throw_exception(
+            ce_can_InvalidOperationException TSRMLS_CC,
+            "Invalid status"
+        );
+        return;
+    }
+
+    evhttp_send_reply_end(request->req);
+
+    request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
+}
+
 static zend_function_entry server_request_methods[] = {
     PHP_ME(CanServerRequest, __construct,          NULL, ZEND_ACC_FINAL | ZEND_ACC_PROTECTED)
     PHP_ME(CanServerRequest, findRequestHeader,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
@@ -1207,6 +1328,9 @@ static zend_function_entry server_request_methods[] = {
     PHP_ME(CanServerRequest, redirect,             NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, setCookie,            NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, sendFile,             NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, sendResponseStart,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, sendResponseChunk,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, sendResponseEnd,      NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
@@ -1217,10 +1341,10 @@ static void server_request_init(TSRMLS_D)
     server_request_obj_handlers.read_property = read_property;
     server_request_obj_handlers.get_properties = get_properties;
     
-    // class \Can\Server\RequestContext
+    // class \Can\Server\Request
     PHP_CAN_REGISTER_CLASS(
         &ce_can_server_request,
-        ZEND_NS_NAME(PHP_CAN_SERVER_NS, "RequestContext"),
+        ZEND_NS_NAME(PHP_CAN_SERVER_NS, "Request"),
         server_request_ctor,
         server_request_methods
     );
