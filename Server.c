@@ -444,8 +444,9 @@ static void request_handler(struct evhttp_request *req, void *arg)
             zval *file = NULL, *line = NULL, *error = NULL;
             file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
             line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
+            error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
             request->response_status = 500;
-            spprintf(&request->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d %s", 
+            spprintf(&request->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d \"%s\"", 
                     Z_OBJCE_P(EG(exception))->name,
                     file ? Z_STRVAL_P(file) : NULL,
                     line ? (int)Z_LVAL_P(line) : 0,
@@ -508,15 +509,19 @@ static PHP_METHOD(CanServer, __construct)
         return;
     }
 
-    event_init();
+    can_event_base = event_init();
 
     // try to bind server on given ip and port
-    if ((server->http = evhttp_start(Z_STRVAL_P(addr), Z_LVAL_P(port))) == NULL) {
+    if ((server->http = evhttp_new(can_event_base)) == NULL
+           || (evhttp_bind_socket(server->http, Z_STRVAL_P(addr), Z_LVAL_P(port))) < 0
+    ) {
         php_can_throw_exception(
             ce_can_ServerBindingException TSRMLS_CC,
             "Error binding server on %s port %ld",
             Z_STRVAL_P(addr), Z_LVAL_P(port)
         );
+        event_base_free(can_event_base);
+        can_event_base = NULL;
         return;
     }
 
@@ -600,7 +605,7 @@ static PHP_METHOD(CanServer, start)
 
     evhttp_set_gencb(server->http, request_handler, (void*)server);
 
-    event_dispatch();
+    event_base_dispatch(can_event_base);
 }
 
 /**
@@ -628,7 +633,9 @@ static PHP_METHOD(CanServer, stop)
         return;
     }
 
-    if (event_loopbreak() == 0) {
+    if (event_base_loopbreak(can_event_base) == 0) {
+        event_base_free(can_event_base);
+        can_event_base = NULL;
         server->running = 0;
         RETURN_TRUE;
     } else {

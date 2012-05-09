@@ -31,6 +31,7 @@ extern zend_module_entry can_module_entry;
 
 #define PHP_CAN_NS "Can"
 #define PHP_CAN_SERVER_NS ZEND_NS_NAME(PHP_CAN_NS, "Server")
+#define PHP_CAN_CLIENT_NS ZEND_NS_NAME(PHP_CAN_NS, "Client")
 
 PHP_MINIT_FUNCTION(can);
 PHP_MSHUTDOWN_FUNCTION(can);
@@ -52,6 +53,8 @@ zval * php_can_strtr_array(char *str, int slen, HashTable *hash);
 #ifdef ZTS
 #include "TSRM.h"
 #endif
+
+extern struct event_base *can_event_base;
 
 #define PHP_CAN_FOREACH(array, value)                            \
     char *strkey; ulong numkey; int keytype;                        \
