@@ -28,7 +28,9 @@
 #include "php_can.h"
 
 #include <signal.h>
-    
+
+ZEND_DECLARE_MODULE_GLOBALS(can)
+
 #ifdef COMPILE_DL_CAN
 ZEND_GET_MODULE(can)
 #endif
@@ -337,7 +339,7 @@ zend_module_entry can_module_entry = {
 
 PHP_MINIT_FUNCTION(can)
 {
-    can_event_base = NULL;
+    CAN_G(can_event_base) = NULL;
     
     php_can_ignore_sigpipe();
 
@@ -347,7 +349,8 @@ PHP_MINIT_FUNCTION(can)
         & PHP_MINIT(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MINIT(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MINIT(can_client)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MINIT(can_client_response)(INIT_FUNC_ARGS_PASSTHRU);
+        & PHP_MINIT(can_client_response)(INIT_FUNC_ARGS_PASSTHRU)
+    ;
 }
 PHP_MSHUTDOWN_FUNCTION(can)
 {
@@ -357,7 +360,8 @@ PHP_MSHUTDOWN_FUNCTION(can)
         & PHP_MSHUTDOWN(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MSHUTDOWN(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MSHUTDOWN(can_client)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MSHUTDOWN(can_client_response)(INIT_FUNC_ARGS_PASSTHRU);
+        & PHP_MSHUTDOWN(can_client_response)(INIT_FUNC_ARGS_PASSTHRU)
+    ;
 }
 
 PHP_RINIT_FUNCTION(can)
@@ -368,7 +372,8 @@ PHP_RINIT_FUNCTION(can)
         & PHP_RINIT(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RINIT(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RINIT(can_client)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RINIT(can_client_response)(INIT_FUNC_ARGS_PASSTHRU);
+        & PHP_RINIT(can_client_response)(INIT_FUNC_ARGS_PASSTHRU)
+    ;
 }
 PHP_RSHUTDOWN_FUNCTION(can)
 {
@@ -378,7 +383,8 @@ PHP_RSHUTDOWN_FUNCTION(can)
         & PHP_RSHUTDOWN(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RSHUTDOWN(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RSHUTDOWN(can_client)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RSHUTDOWN(can_client_response)(INIT_FUNC_ARGS_PASSTHRU);
+        & PHP_RSHUTDOWN(can_client_response)(INIT_FUNC_ARGS_PASSTHRU)
+    ;
 }
 
 PHP_MINFO_FUNCTION(can)

@@ -101,7 +101,7 @@ static void server_request_dtor(void *object TSRMLS_DC)
     efree(request);
 }
 
-static zval *read_property(zval *object, zval *member, int type, const zend_literal *key TSRMLS_DC)
+static zval *read_property(zval *object, zval *member, int type ZEND_LITERAL_KEY_DC TSRMLS_DC)
 {
     struct php_can_server_request *request;
     zval tmp_member;
@@ -273,7 +273,7 @@ static zval *read_property(zval *object, zval *member, int type, const zend_lite
 
     } else {
         std_hnd = zend_get_std_object_handlers();
-        retval = std_hnd->read_property(object, member, type, key TSRMLS_CC);
+        retval = std_hnd->read_property(object, member, type ZEND_LITERAL_KEY_CC TSRMLS_CC);
     }
 
     if (member == &tmp_member) {
@@ -423,7 +423,7 @@ static PHP_METHOD(CanServerRequest, findRequestHeader)
     
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "z", &header) || Z_TYPE_P(header) != IS_STRING || Z_STRLEN_P(header) == 0) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $header)",
@@ -470,7 +470,7 @@ static PHP_METHOD(CanServerRequest, addResponseHeader)
         || Z_STRLEN_P(header) == 0
         || Z_TYPE_P(value) != IS_STRING
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $header, string $value)",
@@ -501,7 +501,7 @@ static PHP_METHOD(CanServerRequest, removeResponseHeader)
         || Z_STRLEN_P(header) == 0
         || (value != NULL && (Z_TYPE_P(value) != IS_STRING || Z_STRLEN_P(value) == 0))
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $header[, string $value])",
@@ -557,7 +557,7 @@ static PHP_METHOD(CanServerRequest, setResponseStatus)
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "z", &status) || Z_TYPE_P(status) != IS_LONG) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(int $status)",
@@ -593,7 +593,7 @@ static PHP_METHOD(CanServerRequest, redirect)
         || Z_STRLEN_P(location) == 0 
         || (status && (Z_TYPE_P(status) != IS_LONG || Z_LVAL_P(status) < 300 || Z_LVAL_P(status) > 399))
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $location[, int $status = 302])",
@@ -633,7 +633,7 @@ static PHP_METHOD(CanServerRequest, setCookie)
         || (httponly && Z_TYPE_P(httponly) != IS_BOOL)
         || (url_encode && Z_TYPE_P(url_encode) != IS_BOOL)
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $name [, string $value [, int $expire = 0 [, string $path "
@@ -779,7 +779,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
                      &mimetype, &mimetype_len, &download, &chunksize)
         || filename_len == 0
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $filename[, string $root[, string $mimetype[, string $download[, int $chunksize=10240]]]])",
@@ -801,7 +801,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
     if (root_len > 0) {
         rootpath = get_realpath(root, 1 TSRMLS_CC);
         if (rootpath == NULL) {
-            const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+            zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
             php_can_throw_exception(
                 ce_can_InvalidParametersException TSRMLS_CC,
                 "%s%s%s(): Cannot determine real path of $root value '%s'",
@@ -904,7 +904,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
     if (mimetype_len == 0) {
         // $mimtype was not given, so try to determine mimetype with finfo
         zend_class_entry **cep;
-        if (zend_lookup_class_ex("\\finfo", sizeof("\\finfo") - 1, NULL, 0, &cep TSRMLS_CC) == SUCCESS) {
+        if (zend_lookup_class("\\finfo", sizeof("\\finfo") - 1, &cep TSRMLS_CC) == SUCCESS) {
 
             zval *retval_ptr, *object, **params[1], *arg, *zfilepath, *retval;
             zend_fcall_info fci;
@@ -1232,7 +1232,7 @@ static PHP_METHOD(CanServerRequest, sendResponseStart)
         || Z_TYPE_P(status) != IS_LONG 
         || (reason && (Z_TYPE_P(reason) != IS_STRING || Z_STRLEN_P(reason) == 0))
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(int $status[, string $reason])",
@@ -1278,7 +1278,7 @@ static PHP_METHOD(CanServerRequest, sendResponseChunk)
             "z", &chunk) 
         || Z_TYPE_P(chunk) != IS_STRING 
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $chunk)",

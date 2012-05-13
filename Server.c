@@ -18,6 +18,8 @@
 
 #include "Server.h"
 
+extern ZEND_DECLARE_MODULE_GLOBALS(can)
+
 #ifndef HAVE_TAILQFOREACH
 #include <sys/queue.h>
 #endif
@@ -391,7 +393,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
 #ifdef HAVE_JSON
                                 zend_class_entry **cep;
                                 if (Z_TYPE(retval) == IS_OBJECT 
-                                        && zend_lookup_class_ex("\\JsonSerializable", sizeof("\\JsonSerializable") - 1, NULL, 0, &cep TSRMLS_CC) == SUCCESS
+                                        && zend_lookup_class("\\JsonSerializable", sizeof("\\JsonSerializable") - 1, &cep TSRMLS_CC) == SUCCESS
                                         && instanceof_function(Z_OBJCE(retval), *cep TSRMLS_CC)
                                 ) {
                                     // implements JsonSerializable
@@ -492,7 +494,7 @@ static PHP_METHOD(CanServer, __construct)
         || (logformat && (Z_TYPE_P(logformat) != IS_STRING || Z_STRLEN_P(logformat) == 0))
         || (zlogfile && Z_TYPE_P(zlogfile) != IS_RESOURCE)
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $ip, integer $port[, string $log_format[, string $log_handler]])",
@@ -509,10 +511,10 @@ static PHP_METHOD(CanServer, __construct)
         return;
     }
 
-    can_event_base = event_init();
+    CAN_G(can_event_base) = event_init();
 
     // try to bind server on given ip and port
-    if ((server->http = evhttp_new(can_event_base)) == NULL
+    if ((server->http = evhttp_new(CAN_G(can_event_base))) == NULL
            || (evhttp_bind_socket(server->http, Z_STRVAL_P(addr), Z_LVAL_P(port))) < 0
     ) {
         php_can_throw_exception(
@@ -520,12 +522,12 @@ static PHP_METHOD(CanServer, __construct)
             "Error binding server on %s port %ld",
             Z_STRVAL_P(addr), Z_LVAL_P(port)
         );
-        event_base_free(can_event_base);
-        can_event_base = NULL;
+        event_base_free(CAN_G(can_event_base));
+        CAN_G(can_event_base) = NULL;
         return;
     }
 
-    // allow all known http methods
+    // allow all supported http methods
     evhttp_set_allowed_methods(server->http,
         EVHTTP_REQ_GET|
         EVHTTP_REQ_POST|
@@ -587,7 +589,7 @@ static PHP_METHOD(CanServer, start)
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "O", &zrouter, ce_can_server_router)) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(Router $router)",
@@ -605,7 +607,7 @@ static PHP_METHOD(CanServer, start)
 
     evhttp_set_gencb(server->http, request_handler, (void*)server);
 
-    event_base_dispatch(can_event_base);
+    event_base_dispatch(CAN_G(can_event_base));
 }
 
 /**
@@ -614,7 +616,7 @@ static PHP_METHOD(CanServer, start)
 static PHP_METHOD(CanServer, stop)
 {
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC, "")) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(void)",
@@ -633,9 +635,9 @@ static PHP_METHOD(CanServer, stop)
         return;
     }
 
-    if (event_base_loopbreak(can_event_base) == 0) {
-        event_base_free(can_event_base);
-        can_event_base = NULL;
+    if (event_base_loopbreak(CAN_G(can_event_base)) == 0) {
+        event_base_free(CAN_G(can_event_base));
+        CAN_G(can_event_base) = NULL;
         server->running = 0;
         RETURN_TRUE;
     } else {

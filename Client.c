@@ -21,10 +21,10 @@
 #include <event.h>
 #include <evhttp.h>
 
+extern ZEND_DECLARE_MODULE_GLOBALS(can)
+
 zend_class_entry *ce_can_client;
 static zend_object_handlers client_obj_handlers;
-
-static struct event_base *event_base = NULL;
 
 static void client_dtor(void *object TSRMLS_DC);
 
@@ -55,7 +55,7 @@ static void client_dtor(void *object TSRMLS_DC)
 {
     struct php_can_client *client = (struct php_can_client*)object;
     
-    if (client->base && client->base != can_event_base) {
+    if (client->base && client->base != CAN_G(can_event_base)) {
         event_base_free(client->base);
         client->base = NULL;
     }
@@ -92,7 +92,7 @@ static void response_handler(struct evhttp_request *req, void *arg)
     zval *zresponse, *args[1], retval;
     struct php_can_client *client = (struct php_can_client*)arg;
 
-    if (client->base != can_event_base) {
+    if (client->base != CAN_G(can_event_base)) {
         event_base_loopexit(client->base, 0);
     }
     
@@ -135,7 +135,7 @@ static PHP_METHOD(CanClient, __construct)
         || (method && (Z_TYPE_P(method) != IS_LONG || Z_LVAL_P(method) < 1))
         || (headers && Z_TYPE_P(headers) != IS_ARRAY)
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $url[, integer $method = %s::METHOD_GET[, array $options = array()]])",
@@ -189,7 +189,7 @@ static PHP_METHOD(CanClient, send)
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
         "z", &handler)
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(callback $handler)",
@@ -223,8 +223,8 @@ static PHP_METHOD(CanClient, send)
     int port = evhttp_uri_get_port(client->uri);
     port = port == -1 ? 80 : port;
     
-    client->base = can_event_base != NULL ? 
-        can_event_base : event_base_new();
+    client->base = CAN_G(can_event_base) != NULL ? 
+        CAN_G(can_event_base) : event_base_new();
 
     client->evcon = evhttp_connection_base_new(client->base, NULL, host, port);
 
@@ -244,7 +244,7 @@ static PHP_METHOD(CanClient, send)
     evhttp_make_request(client->evcon, req, client->method, (const char*)uri);
     efree(uri);
 
-    if (client->base != can_event_base) {
+    if (client->base != CAN_G(can_event_base)) {
         event_base_dispatch(client->base);
     }
 }
