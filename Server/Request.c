@@ -773,11 +773,21 @@ static PHP_METHOD(CanServerRequest, sendFile)
     int filename_len, root_len = 0, *mimetype_len = 0;
     zval *download = NULL;
     long chunksize = 8192; // default chunksize 8 kB
-
+    
+#if PHP_VERSION_ID < 50399
+#define TYPE_SPEC "s|sszl"
+#define CAN_CHECK_NULL_PATH(p, l) (l > 0 && strlen(p) != l)
+#else
+#define TYPE_SPEC "p|pszl"
+#define CAN_CHECK_NULL_PATH(p, l) (0)
+#endif
+    
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "p|pszl", &filename, &filename_len, &root, &root_len, 
+            TYPE_SPEC, &filename, &filename_len, &root, &root_len, 
                      &mimetype, &mimetype_len, &download, &chunksize)
         || filename_len == 0
+        || CAN_CHECK_NULL_PATH(filename, filename_len)
+        || CAN_CHECK_NULL_PATH(root, root_len)
     ) {
         zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(

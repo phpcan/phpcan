@@ -4,31 +4,95 @@
 <?php if(!extension_loaded("can")) print "skip"; ?>
 --FILE--
 <?php
-function test($code, $expected, $meth = 'GET')
+function test($code, $expected, $meth = 'GET', $rHdrs = null)
 {
-    $context = stream_context_create(array('http'=>array('method'=>$meth,"header"=>"X-My-Custom-Header: WOW\r\nContent-Type:text/plain\r\n", "content"=>"foobar")));
-    $str = '$s=new Can\Server("0.0.0.0", 45678, "x-error\n");$s->start(new Can\Server\Router([new ' . 
-       'Can\Server\Route("/<uri>",function($r, $a) {global $s;if (strpos($a["uri"]' . 
-       ',"quit")===0) $s->stop(); else try{if ($a["uri"] === "r")return $r->get["o"];%s;}catch(\Exception $e){return get_class($e).' . 
-       '":".$e->getMessage();}},Can\Server\Route::METHOD_ALL)]));';
+    $str = '$s=new Can\Server("0.0.0.0", 45678, "x-error\n");' . 
+           '$s->start(new Can\Server\Router(array(' . 
+           'new Can\Server\Route("/<uri>",' . 
+           'function($r, $a) {' . 
+           'global $s;' . 
+           'if (strpos($a["uri"],"quit")===0) $s->stop(); ' . 
+           'else try {%s;} catch(\Exception $e){return get_class($e).":".$e->getMessage();}}' . 
+           ',Can\Server\Route::METHOD_ALL))));';
     $cmd = sprintf($str, $code);
-    exec ($_SERVER['_'] . " -r '" . $cmd . "' >/dev/null &");
+    //exec ($_SERVER['_'] . " -r '" . $cmd . "' >/dev/null &");
+    exec ($_SERVER['_'] . " -r '" . $cmd . "' >./log.txt &");
     sleep(1);
-    $r = file_get_contents('http://127.0.0.1:45678/test', false, $context);
-    var_dump($r === $expected);
-    if ($r !== $expected) {
-        var_dump($r);
-        var_dump($expected);
+    
+    $fp = stream_socket_client("tcp://127.0.0.1:45678", $errno, $errstr, 30);
+    if (!$fp) {
+        echo "$errstr ($errno)\n";
+    } else {
+        $headers = "X-My-Custom-Header: WOW\r\nContent-Type: text/plain\r\n";
+        $content = '';
+        switch($meth) {
+            case 'POST':
+            case 'PUT':
+                $content = "foobar";
+                $headers .= "Content-Length: " . strlen($content) . "\r\n";
+                break;
+        }
+        fwrite($fp, $meth . " /test HTTP/1.0\r\n$headers\r\n" . $content);
+        $r = '';
+        $is_body = false;
+        $_headers = array();
+        while (!feof($fp) && $data = fgets($fp, 1024)) {
+            if ($data == "\r\n") {
+                $is_body = true;
+                continue;
+            }
+            if ($is_body) $r .= $data;
+            else {
+                if (false === strpos($data, ':')) continue;
+                list($header, $value) = explode(':', $data);
+                if ('' !== ($v = trim($value))) $_headers[strtolower(trim($header))] = $v;
+            }
+        }
+        fclose($fp);
+        if (!empty($rHdrs)) {
+            $counter = count($rHdrs);
+            $matched = 0;
+            foreach ($rHdrs as $key => $val) {
+                $k = strtolower($key);
+                if (isset($_headers[$k]) && strtolower($_headers[$k]) === strtolower($val)) {
+                    $matched++;
+                }
+            }
+            var_dump($matched === $counter);
+            if ($matched !== $counter) {
+                var_dump($_headers);
+                var_dump($rHdrs);
+            }
+        }
+        if ($expected !== null) {
+            var_dump($r === $expected);
+            if ($r !== $expected) {
+                var_dump($code);
+                var_dump($r);
+                var_dump($expected);
+            }
+        }
+        $fp = stream_socket_client("tcp://127.0.0.1:45678", $errno, $errstr, 30);
+        if (!$fp) {
+            echo "$errstr ($errno)\n";
+        } else {
+            fwrite($fp, "GET /quit HTTP/1.0\r\n$headers\r\n");
+            $r = '';
+            while (!feof($fp)) {
+                $r .= fgets($fp, 1024);
+            }
+            fclose($fp);
+        }
+        
     }
-    @file_get_contents('http://127.0.0.1:45678/quit', false, $context);
 }
-
-test('return $r->findRequestHeader(false);', 'Can\InvalidParametersException:Can\Server\Request::findRequestHeader(string $header)');
-test('return $r->findRequestHeader(null);', 'Can\InvalidParametersException:Can\Server\Request::findRequestHeader(string $header)');
-test('return $r->findRequestHeader("x-mY-custOm-HeadER");', 'WOW');
-test('return var_export($r->findRequestHeader("nada"),1);', 'false');
-test('return var_export($r->findRequestHeader("nada"),1);', 'false');
-test('return var_export($r->getRequestBody(),1);', 'false');
+/**/
+test('return $r->findRequestHeader(false);', "Can\InvalidParametersException:Can\Server\Request::findRequestHeader(string \$header)");
+test('return $r->findRequestHeader(null);', "Can\InvalidParametersException:Can\Server\Request::findRequestHeader(string \$header)");
+test('return $r->findRequestHeader("x-mY-custOm-HeadER");', "WOW");
+test('return var_export($r->findRequestHeader("nada"),1);', "false");
+test('return var_export($r->findRequestHeader("nada"),1);', "false");
+test('return var_export($r->getRequestBody(),1);', "false");
 test('return var_export($r->getRequestBody(),1);', '\'foobar\'', 'PUT');
 test('return $r->addResponseHeader();', 'Can\\InvalidParametersException:Can\\Server\\Request::addResponseHeader(string $header, string $value)');
 test('return $r->addResponseHeader(false);', 'Can\\InvalidParametersException:Can\\Server\\Request::addResponseHeader(string $header, string $value)');
@@ -53,9 +117,9 @@ test('return $r->redirect();', 'Can\\InvalidParametersException:Can\\Server\\Req
 test('return $r->redirect(false);', 'Can\\InvalidParametersException:Can\\Server\\Request::redirect(string $location[, int $status = 302])');
 test('return $r->redirect("");', 'Can\\InvalidParametersException:Can\\Server\\Request::redirect(string $location[, int $status = 302])');
 test('return $r->redirect("/foo/bar", false);', 'Can\\InvalidParametersException:Can\\Server\\Request::redirect(string $location[, int $status = 302])');
-test('return var_export($r->redirect("/r?o=true"),1);', 'true');
-test('return $r->redirect("/r?o=true");', 'true');
-test('return $r->redirect("/r?o=true", 301);', 'true');
+test('return var_export($r->redirect("/r?o=true"),1);', null, 'GET', array('Location' => '/r?o=true'));
+test('return $r->redirect("/r?o=true");', null, 'GET', array('Location' => '/r?o=true'));
+test('return $r->redirect("/r?o=true", 301);', null, 'GET', array('Location' => '/r?o=true'));
 test('$r->setCookie();', 'Can\\InvalidParametersException:Can\\Server\\Request::setCookie(string $name [, string $value [, int $expire = 0 [, string $path [, string $domain [, bool $secure = false [, bool $httponly = false [, bool $url_encode = false]]]]]]])');
 test('$r->setCookie(false);', 'Can\\InvalidParametersException:Can\\Server\\Request::setCookie(string $name [, string $value [, int $expire = 0 [, string $path [, string $domain [, bool $secure = false [, bool $httponly = false [, bool $url_encode = false]]]]]]])');
 test('$r->setCookie("");', 'Can\\InvalidParametersException:Can\\Server\\Request::setCookie(string $name [, string $value [, int $expire = 0 [, string $path [, string $domain [, bool $secure = false [, bool $httponly = false [, bool $url_encode = false]]]]]]])');
@@ -96,12 +160,12 @@ test('return $r->sendResponseStart("123");', 'Can\\InvalidParametersException:Ca
 test('return $r->sendResponseStart(200, false);', 'Can\\InvalidParametersException:Can\\Server\\Request::sendResponseStart(int $status[, string $reason])');
 test('return $r->sendResponseStart(200, "");', 'Can\\InvalidParametersException:Can\\Server\\Request::sendResponseStart(int $status[, string $reason])');
 test('return $r->sendResponseStart(99);', 'Can\\InvalidParametersException:Unexpected HTTP status, expecting range is 100-599');
-test('$r->sendResponseStart(200);', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n\r\n");
+test('$r->sendResponseStart(200);', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n");
 test('$r->sendResponseChunk();', 'Can\\InvalidOperationException:Invalid status');
-test('$r->sendResponseStart(200);$r->sendResponseChunk();', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n\r\n");
-test('$r->sendResponseStart(200);$r->sendResponseChunk(false);', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n\r\n");
-test('$r->sendResponseStart(200);$r->sendResponseChunk(1234);', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n\r\n");
-test('$r->sendResponseStart(200);$r->sendResponseChunk("");', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n\r\n");
+test('$r->sendResponseStart(200);$r->sendResponseChunk();', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n");
+test('$r->sendResponseStart(200);$r->sendResponseChunk(false);', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n");
+test('$r->sendResponseStart(200);$r->sendResponseChunk(1234);', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n");
+test('$r->sendResponseStart(200);$r->sendResponseChunk("");', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n");
 test('$r->sendResponseStart(200);$r->sendResponseChunk("foobar");$r->sendResponseEnd();', "foobar");
 ?>
 --EXPECT--
