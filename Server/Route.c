@@ -83,7 +83,7 @@ static PHP_METHOD(CanServerRoute, __construct)
             || Z_TYPE_P(uri) != IS_STRING 
             || (methods && (Z_TYPE_P(methods) != IS_LONG || Z_LVAL_P(methods) < 1))
     ) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(string $uri, callable $handler[, int $methods = Route::METHOD_GET])",
@@ -176,7 +176,7 @@ static PHP_METHOD(CanServerRoute, getUri)
     zval *as_regexp = NULL;
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "|z", &as_regexp) || (as_regexp && Z_TYPE_P(as_regexp) != IS_BOOL)) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s([bool $as_regexp])",
@@ -209,7 +209,7 @@ static PHP_METHOD(CanServerRoute, getMethod)
     zval *as_regexp = NULL;
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "|z", &as_regexp) || (as_regexp && Z_TYPE_P(as_regexp) != IS_BOOL)) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s([bool $as_regexp])",
