@@ -132,7 +132,7 @@ static PHP_METHOD(CanServerRouter, __construct)
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "|a", &routes)) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(array $routes)",
@@ -179,7 +179,7 @@ static PHP_METHOD(CanServerRouter, addRoute)
 
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
             "O", &zroute, ce_can_server_route)) {
-        const char *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
             "%s%s%s(Route $route)",
