@@ -16,8 +16,8 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef CAN_HTTPSVC_SERVER_H
-#define CAN_HTTPSVC_SERVER_H
+#ifndef CAN_SERVER_H
+#define CAN_SERVER_H
 
 #include "php.h"
 #include "fopen_wrappers.h"
@@ -36,7 +36,7 @@
 #include "php_can.h"
 #include "Exception.h"
 
-#define PHP_CAN_SERVER_NAME    "PHP Can HTTP Server"
+#define PHP_CAN_SERVER_NAME "PHP Can HTTP Server"
 
 #define PHP_CAN_SERVER_RESPONSE_STATUS_NONE    0
 #define PHP_CAN_SERVER_RESPONSE_STATUS_SENDING 1
@@ -230,4 +230,4 @@ PHP_MSHUTDOWN_FUNCTION(can_server);
 PHP_RINIT_FUNCTION(can_server);
 PHP_RSHUTDOWN_FUNCTION(can_server);
 
-#endif /* CAN_HTTPSVC_SERVER_H */
+#endif /* CAN_SERVER_H */

@@ -7,18 +7,18 @@
 use Can\Server\Route;
 use Can\Server\Router;
 try { $router = new Router('foo'); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
-try { $router = new Router(['bar']); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
-try { $router = new Router([new Route('/', function () {}), 'bar']); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
+try { $router = new Router(array('bar')); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
+try { $router = new Router(array(new Route('/', function () {}), 'bar')); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
 $router = new Router();
 try { $router->addRoute(); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
 try { $router->addRoute(false); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
 try { $router->addRoute('test'); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
 unset($router);
-$router = new Router([
+$router = new Router(array(
     new Route('/', function ($request) {}),
     new Route('/<id:int>', function ($request) {}, Route::METHOD_GET|Route::METHOD_POST),
     new Route('/<id:float>', function ($request) {}, Route::METHOD_PUT|Route::METHOD_POST),
-]);
+));
 $router->addRoute(new Route('/<file:path>', function ($request) {}, Route::METHOD_DELETE|Route::METHOD_POST));
 foreach ($router as $i => $route) {
     var_dump($route->getUri());

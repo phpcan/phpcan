@@ -5,6 +5,7 @@
 --FILE--
 <?php
 use Can\Server;
+ini_set("date.timezone", "Europe/Berlin");
 try { $s = new Server(); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
 try { $s = new Server(false); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
 try { $s = new Server(''); } catch (\Exception $e) { var_dump($e instanceof Can\InvalidParametersException); }
