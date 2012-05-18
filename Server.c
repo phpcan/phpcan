@@ -390,7 +390,16 @@ static void request_handler(struct evhttp_request *req, void *arg)
                                 // empty response
                             } else {
                                 // non-scalar
+                                                                
 #ifdef HAVE_JSON
+                                // check for existance of Content-Type response header and it's value
+                                // if the value is ``application/json`` we will try to JSON encode it
+                                int foundHeader = 0;
+                                const char *contentType =evhttp_find_header(req->output_headers, "Content-Type");
+                                if (contentType && strcmp(contentType, "application/json") == 0) {
+                                    foundHeader = 1;
+                                }
+                                
                                 zend_class_entry **cep;
                                 if (Z_TYPE(retval) == IS_OBJECT 
                                         && zend_lookup_class("\\JsonSerializable", sizeof("\\JsonSerializable") - 1, &cep TSRMLS_CC) == SUCCESS
@@ -401,7 +410,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                                     zend_call_method_with_0_params(&object, NULL, NULL, "jsonSerialize", &result);
                                     if (result) {
                                         if (Z_TYPE_P(result) == IS_STRING && Z_STRLEN_P(result) > 0) {
-                                            if (-1 != evhttp_add_header(request->req->output_headers, "Content-Type", 
+                                            if (foundHeader || -1 != evhttp_add_header(request->req->output_headers, "Content-Type", 
                                                     "application/json")) {
                                                 request->response_len = Z_STRLEN_P(result);
                                                 evbuffer_add(buffer, Z_STRVAL_P(result), Z_STRLEN_P(result));
@@ -410,6 +419,12 @@ static void request_handler(struct evhttp_request *req, void *arg)
                                         zval_ptr_dtor(&result);
                                     }
                                  
+                                } else if (foundHeader) {
+                                    smart_str encoded = {0};
+                                    php_json_encode(&encoded, &retval, 0 TSRMLS_CC);
+                                    request->response_len = encoded.len;
+                                    evbuffer_add(buffer, encoded.c, encoded.len);
+                                    smart_str_free(&encoded);
                                 }
 #endif
                                 if (request->response_len == 0) {
@@ -557,7 +572,7 @@ static PHP_METHOD(CanServer, __construct)
         php_stream_from_zval_no_verify(server->logfile, &zlogfile);
     }
     if (logformat != NULL) {
-        
+
         if (FAILURE != php_can_strpos(server->logformat, "x-reqnum", 0)) {
             request_counter_used = 1;
         }
