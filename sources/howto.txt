@@ -30,15 +30,18 @@ Mandatory Hello World example:
     use \Can\Server\Route;
     use \Can\Server\Request;
 
-    $router = new Router([
-        new Route('/hello', 
-            function(Request $request) 
-                return 'Hello, World!';
-            }
+    $router = new Router(
+        array(
+            new Route('/hello', 
+                function(Request $request) 
+                    return 'Hello, World!';
+                }
+            )
         )
-    ]);
-
-    (new Server('127.0.0.1', 4567))->start($router);
+    );
+    
+    $server = new Server('127.0.0.1', 4567);
+    $server->start($router);
 
     ?>
 
@@ -90,20 +93,26 @@ right away and implement RESTful, nice-looking and meaningful URLs with ease. He
 
     <?php
     
-    $router = new Router([
-        new Route(
-            '/wiki/<file:path>',
-            function(Request $request, $args) {
-                return file_get_contents($args['file']);
-            }
-        ),
-        new Route(
-            '/user/<id:int>',
-            function(Request $request, $args) {
-                return User::get($args['id']);
-            }
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;    
+    
+    $router = new Router(
+        array(
+            new Route(
+                '/wiki/<file:path>',
+                function(Request $request, $args) {
+                    return file_get_contents($args['file']);
+                }
+            ),
+            new Route(
+                '/user/<id:int>',
+                function(Request $request, $args) {
+                    return User::get($args['id']);
+                }
+            )
         )
-    ]);
+    );
     
     ?>
 
@@ -121,25 +130,31 @@ for the same route.
 
     <?php
 
-    $router = new Router([
-        new Route('/login', 
-            function(Request $request) {
-                return '<form method="POST">
-                        Username: <input name="name" type="text" /><br />
-                        Password: <input name="pass" type="password" /></br />
-                        <input name="submit" type="submit" value="Log in" />
-                        </form>';
-            }, Route::METHOD_GET
-        ),
-        new Route('/login', 
-            function(Request $request) {
-                if (login($request->post['name'], $request->post['pass'])) {
-                    return '<h2>You\'re ligged in!</h2>';
-                }
-                return '<h2>Login failed</h2>';
-            }, Route::METHOD_POST
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
+
+    $router = new Router(
+        array(
+            new Route('/login', 
+                function(Request $request) {
+                    return '<form method="POST">
+                            Username: <input name="name" type="text" /><br />
+                            Password: <input name="pass" type="password" /></br />
+                            <input name="submit" type="submit" value="Log in" />
+                            </form>';
+                }, Route::METHOD_GET
+            ),
+            new Route('/login', 
+                function(Request $request) {
+                    if (login($request->post['name'], $request->post['pass'])) {
+                        return '<h2>You\'re ligged in!</h2>';
+                    }
+                    return '<h2>Login failed</h2>';
+                }, Route::METHOD_POST
+            )
         )
-    ]);
+    );
 
     ?>
 
@@ -159,14 +174,20 @@ control which files get served and where to find them:
 .. code-block:: php
 
     <?php
+    
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
 
-    $router = new Router([
-        new Route('/static/<filename>', 
-            function(Request $request, $args) {
-                $request->sendFile($args['filename'], '/path/to/your/static/files');
-            }
+    $router = new Router(
+        array(
+            new Route('/static/<filename>', 
+                function(Request $request, $args) {
+                    $request->sendFile($args['filename'], '/path/to/your/static/files');
+                }
+            )
         )
-    ]);
+    );
     
     ?>
     
@@ -177,13 +198,19 @@ wildcard won't match a path with a slash in it. To serve files in subdirectories
 
     <?php
 
-    $router = new Router([
-        new Route('/static/<filename:path>', 
-            function(Request $request, $args) {
-                $request->sendFile($args['filename'], '/path/to/your/static/files');
-            }
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
+
+    $router = new Router(
+        array(
+            new Route('/static/<filename:path>', 
+                function(Request $request, $args) {
+                    $request->sendFile($args['filename'], '/path/to/your/static/files');
+                }
+            )
         )
-    ]);
+    );
 
     ?>
 
@@ -197,14 +224,20 @@ You can pass a custom MIME type as 3. parameter to disable guessing:
 
     <?php
 
-    $router = new Router([
-        new Route('/static/<filename:re:.*\.png>', 
-            function(Request $request, $args) {
-                $request->sendFile($args['filename'], 
-                    '/path/to/your/static/files', 'image/png');
-            }
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
+    
+    $router = new Router(
+        array(
+            new Route('/static/<filename:re:.*\.png>', 
+                function(Request $request, $args) {
+                    $request->sendFile($args['filename'], 
+                        '/path/to/your/static/files', 'image/png');
+                }
+            )
         )
-    ]);
+    );
 
     ?>
     
@@ -219,15 +252,21 @@ If this is not what you want, you can force a download dialog by setting 4. para
 .. code-block:: php
 
     <?php
+    
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\Request;
 
-    $router = new Router([
-        new Route('/downloads/<filename:re:.*\.pdf>', 
-            function(Request $request, $args) {
-                $request->sendFile($args['filename'], 
-                '/path/to/your/static/files', 'application/pdf', true);
-            }
+    $router = new Router(
+        array(
+            new Route('/downloads/<filename:re:.*\.pdf>', 
+                function(Request $request, $args) {
+                    $request->sendFile($args['filename'], 
+                    '/path/to/your/static/files', 'application/pdf', true);
+                }
+            )
         )
-    ]);
+    );
 
     ?>
 
@@ -262,51 +301,55 @@ Example:
 .. code-block:: php
 
     <?php
-
+    
     use \Can\Server;
     use \Can\Server\Router;
     use \Can\Server\Route;
     use \Can\Server\Request;
-
-    $router = new Router([
-        new Route('/upload', 
-            function(Request $request) {
-                switch ($request->method) {
-                    case 'POST':
-                        return '<pre>' . PHP_EOL . 
-                               'post data: ' . print_r($request->post, true) . PHP_EOL .
-                               'uploaded files: ' . print_r($request->files, true) . PHP_EOL;
-                        break;
-                    default:
-                        return '
-                            <form action="/upload" method="POST" enctype="multipart/form-data">
-                            <input type="text" name="foo" value="bar"/><br/>
-                            <input type="file" name="file1" /></br/>
-                            <input type="text" name="baz" value="zak"/><br />
-                            <input type="file" name="file2" /><br/>
-                            <input type="submit" name="submit" value="Send"></form>
-                        ';
-                        break;
-                }
-            }, Route::METHOD_GET|Route::METHOD_POST
+    
+    $router = new Router(
+        array(
+            new Route('/upload', 
+                function(Request $request) {
+                    switch ($request->method) {
+                        case 'POST':
+                            return '<pre>' . PHP_EOL . 
+                                   'post data: ' . print_r($request->post, true) . PHP_EOL .
+                                   'uploaded files: ' . print_r($request->files, true) . PHP_EOL;
+                            break;
+                        default:
+                            return '
+                                <form action="/upload" method="POST" enctype="multipart/form-data">
+                                <input type="text" name="foo" value="bar"/><br/>
+                                <input type="file" name="file1" /></br/>
+                                <input type="text" name="baz" value="zak"/><br />
+                                <input type="file" name="file2" /><br/>
+                                <input type="submit" name="submit" value="Send"></form>
+                            ';
+                            break;
+                    }
+                }, Route::METHOD_GET|Route::METHOD_POST
+            )
         )
-    ]);
-
-    (new Server('127.0.0.1', 4567))->start($router);
-
+    );
+    
+    $server = new Server('127.0.0.1', 4567);
+    $server->start($router);
+    
     ?>
+    
     
 Run this script, visit http://localhost:4567/upload, fill out and submit the form and you will see something similar:
 
 .. code-block:: php
-
+    
     post data: Array
     (
         [foo] => bar
         [baz] => zak
         [submit] => Send
     )
-
+    
     uploaded files: Array
     (
         [0] => Array
@@ -324,7 +367,6 @@ Run this script, visit http://localhost:4567/upload, fill out and submit the for
                 [filesize] => 5643
                 [tmp_name] => /tmp/phpcanrHv051
             )
-
     )
 
 Every item within :php:attr:`Request::$files` array contains uploaded file information: `name` contains the
@@ -350,19 +392,20 @@ Here is an example how to implement a HTTP service that servs static content.
     use \Can\Server\Route;
     use \Can\Server\Request;
     
-    (new Server(
-        '127.0.0.1', 4567, 
-        "time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error\n")
-    )->start(
-        new Router([
-            new Route(
-                '/<file:path>',
-                function (Request $request, array $args) {
-                    return $request->sendFile($args['file'], '/tmp/phpcan-phpcan-f4b83b2');
-                },
-                (Route::METHOD_GET|Route::METHOD_HEAD)
+    $server = new Server('127.0.0.1', 4567, 
+        "time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error\n");
+    $server->start(
+        new Router(
+            array(
+                new Route(
+                    '/<file:path>',
+                    function (Request $request, array $args) {
+                        return $request->sendFile($args['file'], '/tmp/phpcan-phpcan-f4b83b2');
+                    },
+                    (Route::METHOD_GET|Route::METHOD_HEAD)
+                )
             )
-        ])
+        )
     );
     
     ?>

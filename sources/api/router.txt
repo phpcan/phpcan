@@ -37,11 +37,13 @@ Example:
     
     $handler = function(){};
     
-    $router = new Router([
-        new Route('/', $handler),
-        new Route('/home', $handler, Route::METHOD_GET|Route::METHOD_PUT),
-        new Route('/<file:path>', $handler, Route::METHOD_GET|Route::METHOD_HEAD),
-    ]);
+    $router = new Router(
+        array(
+            new Route('/', $handler),
+            new Route('/home', $handler, Route::METHOD_GET|Route::METHOD_PUT),
+            new Route('/<file:path>', $handler, Route::METHOD_GET|Route::METHOD_HEAD),
+        )
+    );
     
     $router->addRoute(
         new Route('/what/ever', $handler)
