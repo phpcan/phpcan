@@ -6,7 +6,7 @@
 <?php
 function test($code, $expected, $meth = 'GET', $rHdrs = null)
 {
-    $str = '$s=new Can\Server("0.0.0.0", 45678, "x-error\n");' . 
+    $str = '$s=new Can\Server("0.0.0.0", 45678);' . 
            '$s->start(new Can\Server\Router(array(' . 
            'new Can\Server\Route("/<uri>",' . 
            'function($r, $a) {' . 
@@ -15,8 +15,7 @@ function test($code, $expected, $meth = 'GET', $rHdrs = null)
            'else try {%s;} catch(\Exception $e){return get_class($e).":".$e->getMessage();}}' . 
            ',Can\Server\Route::METHOD_ALL))));';
     $cmd = sprintf($str, $code);
-    //exec ($_SERVER['_'] . " -r '" . $cmd . "' >/dev/null &");
-    exec ($_SERVER['_'] . " -r '" . $cmd . "' >./log.txt &");
+    exec ($_SERVER['_'] . " -r '" . $cmd . "' >/dev/null &");
     sleep(1);
     
     $fp = stream_socket_client("tcp://127.0.0.1:45678", $errno, $errstr, 30);
@@ -167,8 +166,12 @@ test('$r->sendResponseStart(200);$r->sendResponseChunk(false);', "HTTP/1.0 200 O
 test('$r->sendResponseStart(200);$r->sendResponseChunk(1234);', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n");
 test('$r->sendResponseStart(200);$r->sendResponseChunk("");', "HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=ISO-8859-1\r\n");
 test('$r->sendResponseStart(200);$r->sendResponseChunk("foobar");$r->sendResponseEnd();', "foobar");
+test('return array(1,2,3,4);', "");
+test('$r->addResponseHeader("Content-Type","application/json");return array(1,2,3,4);', "[1,2,3,4]");
 ?>
 --EXPECT--
+bool(true)
+bool(true)
 bool(true)
 bool(true)
 bool(true)
