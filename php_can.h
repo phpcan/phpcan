@@ -43,6 +43,10 @@ extern zend_module_entry can_module_entry;
 #define ZEND_LITERAL_KEY_CC , key
 #endif
 
+#ifndef CHECK_ZVAL_NULL_PATH
+#define CHECK_ZVAL_NULL_PATH(p) (Z_STRLEN_P(p) != strlen(Z_STRVAL_P(p)))
+#endif
+
 ZEND_BEGIN_MODULE_GLOBALS(can) 
     struct event_base *can_event_base;
 ZEND_END_MODULE_GLOBALS(can)
