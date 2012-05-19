@@ -142,11 +142,13 @@
 
 <span class="nv">$handler</span> <span class="o">=</span> <span class="k">function</span><span class="p">(){};</span>
 
-<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">([</span>
-    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="nv">$handler</span><span class="p">),</span>
-    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/home&#39;</span><span class="p">,</span> <span class="nv">$handler</span><span class="p">,</span> <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span><span class="o">|</span><span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_PUT</span><span class="p">),</span>
-    <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/&lt;file:path&gt;&#39;</span><span class="p">,</span> <span class="nv">$handler</span><span class="p">,</span> <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span><span class="o">|</span><span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_HEAD</span><span class="p">),</span>
-<span class="p">]);</span>
+<span class="nv">$router</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Router</span><span class="p">(</span>
+    <span class="k">array</span><span class="p">(</span>
+        <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="nv">$handler</span><span class="p">),</span>
+        <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/home&#39;</span><span class="p">,</span> <span class="nv">$handler</span><span class="p">,</span> <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span><span class="o">|</span><span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_PUT</span><span class="p">),</span>
+        <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/&lt;file:path&gt;&#39;</span><span class="p">,</span> <span class="nv">$handler</span><span class="p">,</span> <span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_GET</span><span class="o">|</span><span class="nx">Route</span><span class="o">::</span><span class="na">METHOD_HEAD</span><span class="p">),</span>
+    <span class="p">)</span>
+<span class="p">);</span>
 
 <span class="nv">$router</span><span class="o">-&gt;</span><span class="na">addRoute</span><span class="p">(</span>
     <span class="k">new</span> <span class="nx">Route</span><span class="p">(</span><span class="s1">&#39;/what/ever&#39;</span><span class="p">,</span> <span class="nv">$handler</span><span class="p">)</span>
@@ -188,7 +190,7 @@
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on May 07, 2012.
+      Last updated on May 18, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
