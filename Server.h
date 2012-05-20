@@ -147,6 +147,13 @@ struct php_can_server_logentry {
     char * error;
 };
 
+struct php_can_client_ctx {
+    long request_id;
+    zval *zrequest;
+    struct php_can_server *server;
+    struct evhttp_connection *evcon;
+};
+
 #define SETNOW(double_now) \
     double_now = 0.0;  struct timeval __tpnow = {0}; \
     if(gettimeofday(&__tpnow, NULL) == 0 ) \
