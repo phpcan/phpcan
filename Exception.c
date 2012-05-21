@@ -84,10 +84,10 @@ int php_can_throw_exception_code(zend_class_entry *ce TSRMLS_DC, long code, char
  */
 static PHP_METHOD(CanHttpForward, __construct)
 {
-    zval *url, *headers = NULL;
+    zval *url, *headers = NULL, *callback = NULL;
     
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "z|z", &url, &headers)
+            "z|zz", &url, &headers, &callback)
         || Z_TYPE_P(url) != IS_STRING
         || Z_STRLEN_P(url) == 0
         || (headers && Z_TYPE_P(headers) != IS_ARRAY)
@@ -99,6 +99,22 @@ static PHP_METHOD(CanHttpForward, __construct)
             class_name, space, get_active_function_name(TSRMLS_C)
         );
         return;
+    }
+    
+    if (callback) {
+        char *func_name;
+        zend_bool is_callable = zend_is_callable(callback, 0, &func_name TSRMLS_CC);
+        if (!is_callable) {
+            php_can_throw_exception(
+                ce_can_InvalidCallbackException TSRMLS_CC,
+                "Handler '%s' is not a valid callback",
+                func_name
+            );
+            efree(func_name);
+            return;
+        }
+        efree(func_name);
+        zend_update_property(ce_can_HTTPForward, getThis(), "callback", sizeof("callback")-1, callback TSRMLS_CC);
     }
     
     zend_update_property_string(ce_can_HTTPForward, getThis(), "url", sizeof("url")-1, Z_STRVAL_P(url) TSRMLS_CC);
@@ -190,6 +206,7 @@ void can_exceptions_init(TSRMLS_D)
         );
         PHP_CAN_REGISTER_PROPERTY(ce_can_HTTPForward, "url", ZEND_ACC_PROTECTED);
         PHP_CAN_REGISTER_PROPERTY(ce_can_HTTPForward, "headers", ZEND_ACC_PROTECTED);
+        PHP_CAN_REGISTER_PROPERTY(ce_can_HTTPForward, "callback", ZEND_ACC_PROTECTED);
         
         
         // class \Can\HTTPError extends \Can\LogicException
