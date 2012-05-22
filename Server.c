@@ -661,6 +661,8 @@ static void request_handler(struct evhttp_request *req, void *arg)
         // stop sending unfinished chunk response
         evhttp_send_reply_end(request->req);
         write_log = 1;
+    } else if (request->status == PHP_CAN_SERVER_RESPONSE_STATUS_SENT) {
+        write_log = 1;
     }
     
     evbuffer_free(buffer);
