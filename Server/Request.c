@@ -31,6 +31,10 @@
 
 zend_class_entry *ce_can_server_request;
 static zend_object_handlers server_request_obj_handlers;
+static HashTable *mimetypes = NULL;
+static int has_finfo = -1;
+static zend_class_entry **finfo_cep = NULL;
+static const char *default_mimetype = "text/plain";
 
 static void server_request_dtor(void *object TSRMLS_DC);
 
@@ -937,95 +941,168 @@ static PHP_METHOD(CanServerRequest, sendFile)
     }
 #endif
     
+    int fd = -1;
+    if ((fd = open(filepath, O_RDONLY)) < 0) {
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
+            "Cannot open the file '%s'", filename
+        );
+        efree(filepath);
+        return;
+    }
+    
+    struct stat st;
+    if (fstat(fd, &st) < 0) {
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
+            "Cannot fstat the file '%s'", filename
+        );
+        efree(filepath);
+        return;
+    }
+    
+    // we do not serving directory listings, so if requested URI points to directory
+    // we send 403 Forbidden response to the client
+    if (S_ISDIR(st.st_mode)) {
+        php_can_throw_exception_code(
+            ce_can_HTTPError TSRMLS_CC, 403, "Requested path '%s' is a directory", filename
+        );
+        efree(filepath);
+        return;
+    }
+    
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
+    // generate and add ETag
+    char *etag = NULL;
+    int etag_len = spprintf(&etag, 0, "\"%x-%x-%x\"", (int)st.st_ino, (int)st.st_mtime, (int)st.st_size);
+    evhttp_add_header(request->req->output_headers, "ETag", etag);
+    
     // handle $mimetype
     if (mimetype_len == 0) {
-        // $mimtype was not given, so try to determine mimetype with finfo
-        zend_class_entry **cep;
-        if (zend_lookup_class("\\finfo", sizeof("\\finfo") - 1, &cep TSRMLS_CC) == SUCCESS) {
-
-            zval *retval_ptr, *object, **params[1], *arg, *zfilepath, *retval;
-            zend_fcall_info fci;
-            zend_fcall_info_cache fcc;
-            zend_class_entry *ce = *cep;
+        
+        if (has_finfo == -1) {
+            has_finfo = zend_lookup_class("\\finfo", sizeof("\\finfo") - 1, &finfo_cep TSRMLS_CC) == SUCCESS ? 
+                1 : 0;
+        }
+        
+        if (has_finfo) {
             
-            ALLOC_INIT_ZVAL(object);
-            object_init_ex(object, ce);
-
-            MAKE_STD_ZVAL(arg);
-            ZVAL_LONG(arg, 0x000010|0x000400); // MAGIC_MIME_TYPE|MAGIC_MIME_ENCODING
-            params[0] = &arg;
-
-            fci.size = sizeof(fci);
-            fci.function_table = EG(function_table);
-            fci.function_name = NULL;
-            fci.symbol_table = NULL;
-            fci.object_ptr = object;
-            fci.retval_ptr_ptr = &retval_ptr;
-            fci.param_count = 1;
-            fci.params = params;
-            fci.no_separation = 1;
-
-            fcc.initialized = 1;
-            fcc.function_handler = ce->constructor;
-            fcc.calling_scope = EG(scope);
-            fcc.called_scope = Z_OBJCE_P(object);
-            fcc.object_ptr = object;
-
-            // call constructor
-            int result = zend_call_function(&fci, &fcc TSRMLS_CC);
-            zval_ptr_dtor(&arg);
-            if (retval_ptr) {
-                zval_ptr_dtor(&retval_ptr);
+            if (mimetypes == NULL) {
+                ALLOC_HASHTABLE(mimetypes);
+                zend_hash_init(mimetypes, 100, NULL, ZVAL_PTR_DTOR, 0);
             }
             
-            if (result == FAILURE) {
-                php_can_throw_exception(
-                    ce_can_RuntimeException TSRMLS_CC,
-                    "Failed to call '%s' constructor",
-                    ce->name
-                );
-                efree(filepath);
-                return;
-            }
-            
-            // call finfo->file(filename)
-            MAKE_STD_ZVAL(zfilepath);
-            ZVAL_STRING(zfilepath, filepath, 1);
-            zend_call_method_with_1_params(&object, Z_OBJCE_P(object), NULL, "file", &retval, zfilepath);
-            zval_ptr_dtor(&zfilepath);
-            if (EG(exception)) {
-                efree(filepath);
-                return;
-            }
+            zval **cached;
+            if (SUCCESS == zend_hash_find(mimetypes, etag, etag_len + 1, (void **)&cached)) {
 
-            // workaround for CSS files bug in magic library. If css file beginns with C-style comments
-            // magic returns text/x-c as mimetype - we rewright it to test/css if the file has .css extension
-            if (0 == php_can_strpos(Z_STRVAL_P(retval), "text/x-c;", 0)) {
-                char *ext = php_can_substr(filepath, -5, 5);
-                if (ext != NULL) {
-                    if (0 == strcasecmp(ext, ".css")) {
-                        int mime_len = sizeof("text/x-c;") - 1;
-                        char *encoding = php_can_substr(Z_STRVAL_P(retval), mime_len, Z_STRLEN_P(retval) - mime_len);
-                        if (encoding != NULL) {
-                            efree(Z_STRVAL_P(retval));
-                            Z_STRLEN_P(retval) = spprintf(&(Z_STRVAL_P(retval)), 0, "text/css;%s", encoding);
-                            efree(encoding);
-                        }
-                    }
-                    efree(ext);
+                evhttp_add_header(request->req->output_headers, "Content-Type", Z_STRVAL_PP(cached));
+                
+            } else {
+
+                zval *retval_ptr, *object, **params[1], *arg, *zfilepath, *retval = NULL;
+                zend_fcall_info fci;
+                zend_fcall_info_cache fcc;
+                zend_class_entry *ce = *finfo_cep;
+
+                ALLOC_INIT_ZVAL(object);
+                object_init_ex(object, ce);
+
+                MAKE_STD_ZVAL(arg);
+                ZVAL_LONG(arg, 0x000010|0x000400); // MAGIC_MIME_TYPE|MAGIC_MIME_ENCODING
+                params[0] = &arg;
+
+                fci.size = sizeof(fci);
+                fci.function_table = EG(function_table);
+                fci.function_name = NULL;
+                fci.symbol_table = NULL;
+                fci.object_ptr = object;
+                fci.retval_ptr_ptr = &retval_ptr;
+                fci.param_count = 1;
+                fci.params = params;
+                fci.no_separation = 1;
+
+                fcc.initialized = 1;
+                fcc.function_handler = ce->constructor;
+                fcc.calling_scope = EG(scope);
+                fcc.called_scope = Z_OBJCE_P(object);
+                fcc.object_ptr = object;
+
+                // call constructor
+                int result = zend_call_function(&fci, &fcc TSRMLS_CC);
+                zval_ptr_dtor(&arg);
+                if (retval_ptr) {
+                    zval_ptr_dtor(&retval_ptr);
                 }
+
+                if (result == FAILURE) {
+                    php_can_throw_exception(
+                        ce_can_RuntimeException TSRMLS_CC,
+                        "Failed to call '%s' constructor",
+                        ce->name
+                    );
+                    zval *mtype;
+                    MAKE_STD_ZVAL(mtype);
+                    ZVAL_STRING(mtype, default_mimetype, 1);
+                    zend_hash_add(mimetypes, etag, etag_len + 1, (void **)mtype, sizeof(zval), NULL);
+                    efree(filepath);
+                    efree(etag);
+                    return;
+                }
+
+                // call finfo->file(filename)
+                MAKE_STD_ZVAL(zfilepath);
+                ZVAL_STRING(zfilepath, filepath, 1);
+                zend_call_method_with_1_params(&object, Z_OBJCE_P(object), NULL, "file", &retval, zfilepath);
+                zval_ptr_dtor(&zfilepath);
+
+                if (!retval || Z_TYPE_P(retval) != IS_STRING) {
+                    php_can_throw_exception(
+                        ce_can_RuntimeException TSRMLS_CC,
+                        "Unable determine mimetype of the '%s'",
+                        filename
+                    );
+                    zval *mtype;
+                    MAKE_STD_ZVAL(mtype);
+                    ZVAL_STRING(mtype, default_mimetype, 1);
+                    zend_hash_add(mimetypes, etag, etag_len + 1, (void **)mtype, sizeof(zval), NULL);
+                    efree(filepath);
+                    efree(etag);
+                    return;
+                }
+
+                // workaround for CSS files bug in magic library. If css file beginns with C-style comments
+                // magic returns text/x-c as mimetype - we rewright it to test/css if the file has .css extension
+                if (0 == php_can_strpos(Z_STRVAL_P(retval), "text/x-c;", 0)) {
+                    char *ext = php_can_substr(filepath, -5, 5);
+                    if (ext != NULL) {
+                        if (0 == strcasecmp(ext, ".css")) {
+                            int mime_len = sizeof("text/x-c;") - 1;
+                            char *encoding = php_can_substr(Z_STRVAL_P(retval), mime_len, Z_STRLEN_P(retval) - mime_len);
+                            if (encoding != NULL) {
+                                efree(Z_STRVAL_P(retval));
+                                Z_STRLEN_P(retval) = spprintf(&(Z_STRVAL_P(retval)), 0, "text/css;%s", encoding);
+                                efree(encoding);
+                            }
+                        }
+                        efree(ext);
+                    }
+                }
+                
+                zend_hash_add(mimetypes, etag, etag_len + 1, &retval, sizeof(zval *), NULL);
+                
+                zval_add_ref(&retval);
+                evhttp_add_header(request->req->output_headers, "Content-Type", Z_STRVAL_P(retval));
+                zval_ptr_dtor(&retval);
+                zval_ptr_dtor(&object);
+                
             }
-            
-            evhttp_add_header(request->req->output_headers, "Content-Type", Z_STRVAL_P(retval));
-            zval_ptr_dtor(&retval);
-            zval_ptr_dtor(&object);
             
         } else {
-            // finfo is not present, so just set to text/plain 
-            evhttp_add_header(request->req->output_headers, "Content-Type", "text/plain");
+            
+            // finfo is not present, so just set to default mimetype
+            evhttp_add_header(request->req->output_headers, "Content-Type", default_mimetype);
         }
         
     } else {
@@ -1051,45 +1128,11 @@ static PHP_METHOD(CanServerRequest, sendFile)
         }
     }
     
-    int fd = -1;
-    if ((fd = open(filepath, O_RDONLY)) < 0) {
-        php_can_throw_exception(
-            ce_can_RuntimeException TSRMLS_CC,
-            "Cannot read content of the file '%s'", filename
-        );
-        efree(filepath);
-        return;
-    }
-    
-    struct stat st;
-    if (fstat(fd, &st) < 0) {
-        php_can_throw_exception(
-            ce_can_RuntimeException TSRMLS_CC,
-            "Cannot fstat of the file '%s'", filename
-        );
-        efree(filepath);
-        return;
-    }
-    
-    // we do not serving directory listings, so if requested URI points to directory
-    // we send 403 Forbidden response to the client
-    if (S_ISDIR(st.st_mode)) {
-        php_can_throw_exception_code(
-            ce_can_HTTPError TSRMLS_CC, 403, "Requested path '%s' is a directory", filename
-        );
-        efree(filepath);
-        return;
-    }
     efree(filepath);
     
     // add Accept-Ranges header to notify client that we can handle renged requests
     evhttp_add_header(request->req->output_headers, "Accept-Ranges", "bytes");
     
-    // generate and ETag
-    char *etag = NULL;
-    spprintf(&etag, 0, "\"%x-%x-%x\"", (int)st.st_ino, (int)st.st_mtime, (int)st.st_size);
-    evhttp_add_header(request->req->output_headers, "ETag", etag);
-
     // check if client gave us ETag in header
     const char *client_etag = evhttp_find_header(request->req->input_headers, "If-None-Match");
     if (client_etag != NULL && strcmp(client_etag, etag) == 0) {
