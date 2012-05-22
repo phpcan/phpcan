@@ -26,6 +26,8 @@
 #include <evhttp.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 zend_class_entry *ce_can_server_request;
 static zend_object_handlers server_request_obj_handlers;
@@ -935,46 +937,6 @@ static PHP_METHOD(CanServerRequest, sendFile)
     }
 #endif
     
-    // open stream to the requested path
-    int flags = (
-        STREAM_MUST_SEEK                // we gonna seek within stream
-        | STREAM_DISABLE_OPEN_BASEDIR   // we have already checked for open_base dir, so skip it
-        | STREAM_ASSUME_REALPATH        // assume the path passed in exists and is fully expanded, avoiding syscalls
-        | STREAM_DISABLE_URL_PROTECTION // skip allow_url_fopen and allow_url_include checks
-        | REPORT_ERRORS
-    );
-    php_stream *stream = php_stream_open_wrapper(filepath, "rb", flags, NULL);
-    if (!stream) {
-        php_can_throw_exception(
-            ce_can_RuntimeException TSRMLS_CC,
-            "Cannot read content of the file '%s'", filename
-        );
-        efree(filepath);
-        return;
-    }
-    
-    // get stream stats
-    php_stream_statbuf st;
-    if (php_stream_stat(stream, &st) < 0) {
-        php_can_throw_exception(
-            ce_can_RuntimeException TSRMLS_CC,
-            "Cannot stat of the file '%s'", filename
-        );
-        efree(filepath);
-        return;
-    }
-    
-    // we do not serving directory listings, so if requested URI points to directory
-    // we send 403 Forbidden response to the client
-    if (S_ISDIR(st.sb.st_mode)) {
-        php_can_throw_exception_code(
-            ce_can_HTTPError TSRMLS_CC, 403, "Requested path '%s' is a directory", filename
-        );
-        php_stream_close(stream);
-        efree(filepath);
-        return;
-    }
-    
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
     
@@ -1088,6 +1050,36 @@ static PHP_METHOD(CanServerRequest, sendFile)
             efree(basename);
         }
     }
+    
+    int fd = -1;
+    if ((fd = open(filepath, O_RDONLY)) < 0) {
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
+            "Cannot read content of the file '%s'", filename
+        );
+        efree(filepath);
+        return;
+    }
+    
+    struct stat st;
+    if (fstat(fd, &st) < 0) {
+        php_can_throw_exception(
+            ce_can_RuntimeException TSRMLS_CC,
+            "Cannot fstat of the file '%s'", filename
+        );
+        efree(filepath);
+        return;
+    }
+    
+    // we do not serving directory listings, so if requested URI points to directory
+    // we send 403 Forbidden response to the client
+    if (S_ISDIR(st.st_mode)) {
+        php_can_throw_exception_code(
+            ce_can_HTTPError TSRMLS_CC, 403, "Requested path '%s' is a directory", filename
+        );
+        efree(filepath);
+        return;
+    }
     efree(filepath);
     
     // add Accept-Ranges header to notify client that we can handle renged requests
@@ -1095,7 +1087,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
     
     // generate and ETag
     char *etag = NULL;
-    spprintf(&etag, 0, "\"%x-%x-%x\"", (int)st.sb.st_ino, (int)st.sb.st_mtime, (int)st.sb.st_size);
+    spprintf(&etag, 0, "\"%x-%x-%x\"", (int)st.st_ino, (int)st.st_mtime, (int)st.st_size);
     evhttp_add_header(request->req->output_headers, "ETag", etag);
 
     // check if client gave us ETag in header
@@ -1127,7 +1119,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
             zval_ptr_dtor(&strtotime);
         }
         
-        if (client_ts >= st.sb.st_mtime) {
+        if (client_ts >= st.st_mtime) {
             
             // modification falg of the file is older than client's stamp
             // so send "Not Modified" response
@@ -1141,7 +1133,7 @@ static PHP_METHOD(CanServerRequest, sendFile)
             zval retval, *gmstrftime, *format, *timestamp, *args[2];
             MAKE_STD_ZVAL(gmstrftime); ZVAL_STRING(gmstrftime, "gmstrftime", 1);
             MAKE_STD_ZVAL(format); ZVAL_STRING(format, "%a, %d %b %Y %H:%M:%S GMT", 1);
-            MAKE_STD_ZVAL(timestamp); ZVAL_LONG(timestamp, st.sb.st_mtime);
+            MAKE_STD_ZVAL(timestamp); ZVAL_LONG(timestamp, st.st_mtime);
             args[0] = format; args[1] = timestamp;
             Z_ADDREF_P(args[0]); Z_ADDREF_P(args[1]);
             if (call_user_function(EG(function_table), NULL, gmstrftime, &retval, 2, args TSRMLS_CC) == SUCCESS) {
@@ -1165,14 +1157,14 @@ static PHP_METHOD(CanServerRequest, sendFile)
             if (request->req->type == EVHTTP_REQ_HEAD) {
                 request->response_code = 200;
                 char *size = NULL;
-                spprintf(&size, 0, "%ld", (long)st.sb.st_size);
+                spprintf(&size, 0, "%ld", (long)st.st_size);
                 evhttp_add_header(request->req->output_headers, "Content-Length", size);
                 evhttp_send_reply(request->req, request->response_code, NULL, NULL);
                 efree(size);
             } else {
             
                 // check if the client requested the ranged content
-                long range_from = 0, range_to = st.sb.st_size, range_len;
+                long range_from = 0, range_to = st.st_size, range_len;
                 char *range = (char *)evhttp_find_header(request->req->input_headers, "Range");
                 if (range != NULL) {
                     int pos = php_can_strpos(range, "bytes=", 0);
@@ -1199,16 +1191,16 @@ static PHP_METHOD(CanServerRequest, sendFile)
 
                             if (strlen(start) == 0) {
                                 // bytes=-100 -> last 100 bytes
-                                range_from = MAX(0, st.sb.st_size - atol(end));
-                                range_to = st.sb.st_size;
+                                range_from = MAX(0, st.st_size - atol(end));
+                                range_to = st.st_size;
                             } else if (strlen(end) == 0) {
                                 // bytes=100- -> all but the first 99 bytes
                                 range_from = atol(start);
-                                range_to = st.sb.st_size;
+                                range_to = st.st_size;
                             } else {
                                 // bytes=100-200 -> bytes 100-200 (inclusive)
                                 range_from = atol(start);
-                                range_to = MIN(atol(end) + 1, st.sb.st_size);
+                                range_to = MIN(atol(end) + 1, st.st_size);
                             }
                         }
                     }
@@ -1225,66 +1217,25 @@ static PHP_METHOD(CanServerRequest, sendFile)
                 } else {
 
                     // set response code to 206 if partial content requested, to 200 otherwise
-                    request->response_code = range_len != st.sb.st_size ? 206 : 200;
+                    request->response_code = range_len != st.st_size ? 206 : 200;
                     
-                    // if requested range is smaller then chunksize,
-                    // do not use chunked transfer encoding
-                    if (chunksize == 0 || range_len <= chunksize) {
-
-                        char *content;
-                        php_stream_seek(stream, range_from, SEEK_SET );
-                        int content_len = php_stream_copy_to_mem(stream, &content, range_len, 0);
-                        if (request->response_code == 206) {
-                            char *range = NULL;
-                            spprintf(&range, 0, "bytes %ld-%ld/%ld", range_from, range_to, (long)st.sb.st_size);
-                            evhttp_add_header(request->req->output_headers, "Content-Range", range);
-                            efree(range);
-                        }
-                        request->response_len = content_len;
-                        struct evbuffer *buffer = evbuffer_new();
-                        evbuffer_add(buffer, content, content_len);
-                        evhttp_send_reply(request->req, 200, NULL, buffer);
-                        evbuffer_free(buffer);
-                        efree(content);
-
-                    } else {
-
-                        // send content as chunked transfer encoding
-                        long pos = range_from, len;
-                        char *chunk;
-                        while(-1 != php_stream_seek(stream, pos, SEEK_SET )) {
-                            if (pos == range_from) {
-                                request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENDING;
-                                request->response_len = 0;
-                                evhttp_send_reply_start(request->req, request->response_code, NULL);
-                            }
-                            int len = (request->response_len + chunksize) > range_len ? (range_len - request->response_len) : chunksize;
-                            int chunk_len = php_stream_copy_to_mem(stream, &chunk, len, 0);
-                            if (chunk_len == 0) {
-                                efree(chunk);
-                                break;
-                            }
-                            struct evbuffer *buffer = evbuffer_new();
-                            evbuffer_add(buffer, chunk, chunk_len);
-                            evhttp_send_reply_chunk(request->req, buffer);
-                            evbuffer_free(buffer);
-                            efree(chunk);
-                            request->response_len += chunk_len;
-                            pos += chunk_len;
-                            if (request->response_len == range_len) {
-                                break;
-                            }
-                        }
-                        evhttp_send_reply_end(request->req);
+                    if (request->response_code == 206) {
+                        char *range = NULL;
+                        spprintf(&range, 0, "bytes %ld-%ld/%ld", range_from, range_to, (long)st.st_size);
+                        evhttp_add_header(request->req->output_headers, "Content-Range", range);
+                        efree(range);
                     }
+                    request->response_len = range_len;
+                    struct evbuffer *buffer = evbuffer_new();
+                    evbuffer_add_file(buffer, fd, range_from, range_len);
+                    evhttp_send_reply(request->req, request->response_code, NULL, buffer);
+                    evbuffer_free(buffer);
                 }
             }
         }
     }
     request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
-    
     efree(etag);
-    php_stream_close(stream);
 }
 
 /**
