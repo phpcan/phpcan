@@ -4,7 +4,7 @@
 <?php if(!extension_loaded("can")) print "skip"; ?>
 --FILE--
 <?php
-function test($code, $expected, $meth = 'GET', $rHdrs = null)
+function test($code, $expected, $meth = 'GET', $rHdrs = null, $headers = '')
 {
     $str = '$s=new Can\Server("0.0.0.0", 45678);' . 
            '$s->start(new Can\Server\Router(array(' . 
@@ -24,7 +24,7 @@ function test($code, $expected, $meth = 'GET', $rHdrs = null)
     if (!$fp) {
         echo "$errstr ($errno)\n";
     } else {
-        $headers = "X-My-Custom-Header: WOW\r\nContent-Type: text/plain\r\n";
+        $headers .= "Content-Type: text/plain\r\n";
         $content = '';
         switch($meth) {
             case 'POST':
@@ -50,7 +50,7 @@ function test($code, $expected, $meth = 'GET', $rHdrs = null)
             }
         }
         fclose($fp);
-        if (!empty($rHdrs)) {
+        if (is_array($rHdrs) && !empty($rHdrs)) {
             $counter = count($rHdrs);
             $matched = 0;
             foreach ($rHdrs as $key => $val) {
@@ -91,7 +91,7 @@ function test($code, $expected, $meth = 'GET', $rHdrs = null)
 test('$r->responseCode = 500;', "Can\InvalidOperationException:Cannot update readonly property Can\Server\Request::\$responseCode");
 test('return $r->findRequestHeader(false);', "Can\InvalidParametersException:Can\Server\Request::findRequestHeader(string \$header)");
 test('return $r->findRequestHeader(null);', "Can\InvalidParametersException:Can\Server\Request::findRequestHeader(string \$header)");
-test('return $r->findRequestHeader("x-mY-custOm-HeadER");', "WOW");
+test('return $r->findRequestHeader("x-mY-custOm-HeadER");', "WOW", "GET", null, "X-My-Custom-Header: WOW\r\n");
 test('return var_export($r->findRequestHeader("nada"),1);', "false");
 test('return var_export($r->findRequestHeader("nada"),1);', "false");
 test('return var_export($r->getRequestBody(),1);', "false");
@@ -171,8 +171,18 @@ test('$r->sendResponseStart(200);$r->sendResponseChunk("");', "");
 test('$r->sendResponseStart(200);$r->sendResponseChunk("foobar");$r->sendResponseEnd();', "foobar");
 test('return array(1,2,3,4);', "");
 test('$r->addResponseHeader("Content-Type","application/json");return array(1,2,3,4);', "[1,2,3,4]");
+test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");return $r->sendFile("test.txt", __DIR__);', "qwertzuiopasdfghjklyxcvbnm");
+test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");return $r->sendFile("test.txt", __DIR__);', "wertz", "GET", null, "Range: bytes=1-5\r\n");
+test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");return $r->sendFile("test.txt", __DIR__);', "xcvbnm", "GET", null, "Range: bytes=-6\r\n");
+test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");return $r->sendFile("test.txt", __DIR__);', "asdfghjklyxcvbnm", "GET", null, "Range: bytes=10-\r\n");
+test('unlink(__DIR__ . "/test.txt");"";', "");
 ?>
 --EXPECT--
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
 bool(true)
 bool(true)
 bool(true)
