@@ -41,6 +41,7 @@
 #define PHP_CAN_SERVER_RESPONSE_STATUS_NONE    0
 #define PHP_CAN_SERVER_RESPONSE_STATUS_SENDING 1
 #define PHP_CAN_SERVER_RESPONSE_STATUS_SENT    2
+#define PHP_CAN_SERVER_RESPONSE_STATUS_FORWARD 3
 
 #define PHP_CAN_SERVER_ROUTE_METHOD_GET        1
 #define PHP_CAN_SERVER_ROUTE_METHOD_POST       2
@@ -87,7 +88,7 @@ struct php_can_server_request {
     double time;
     int status;
     long response_len;
-    long response_status;
+    long response_code;
     char *error;
     char *uri;
     char *query;
@@ -142,9 +143,17 @@ struct php_can_server_logentry {
     long   response_len;
     char * remote_host;
     long   remote_port;
-    long   response_status;
+    long   response_code;
     size_t mem_usage;
     char * error;
+};
+
+struct php_can_client_ctx {
+    long request_id;
+    zval *zrequest;
+    zval *callback;
+    struct php_can_server *server;
+    struct evhttp_connection *evcon;
 };
 
 #define SETNOW(double_now) \
@@ -171,7 +180,7 @@ struct php_can_server_logentry {
     logentry->response_len = request->response_len; \
     logentry->remote_host = request->req->remote_host; \
     logentry->remote_port = request->req->remote_port; \
-    logentry->response_status = request->response_status; \
+    logentry->response_code = request->response_code; \
     logentry->mem_usage = 0; \
     logentry->error = estrdup(request->error ? request->error : "-");
 
@@ -191,7 +200,7 @@ struct php_can_server_logentry {
     if (php_can_strpos(server->logformat, "cs-uri", 0) != FAILURE) \
         add_assoc_string(map, "cs-uri", logentry->request_uri, 1); \
     if (php_can_strpos(server->logformat, "sc-status", 0) != FAILURE) \
-        add_assoc_long(map, "sc-status", logentry->response_status); \
+        add_assoc_long(map, "sc-status", logentry->response_code); \
     if (php_can_strpos(server->logformat, "sc-bytes", 0) != FAILURE) { \
         if (logentry->response_len > 0) add_assoc_long(map, "sc-bytes", logentry->response_len); \
         else add_assoc_stringl(map, "sc-bytes", "-", 1, 1); \
