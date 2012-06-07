@@ -31,7 +31,9 @@ extern zend_class_entry *ce_can_Exception,
     *ce_can_InvalidParametersException,
     *ce_can_InvalidCallbackException,
     *ce_can_InvalidOperationException,
-    *ce_can_HTTPError;
+    *ce_can_HTTPForward,
+    *ce_can_HTTPError
+    ;
 
 int php_can_throw_exception(zend_class_entry *ce TSRMLS_DC, char *format, ...);
 

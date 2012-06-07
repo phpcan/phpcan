@@ -90,6 +90,157 @@ static void server_dtor(void *object TSRMLS_DC)
     efree(server);
 }
 
+static void free_client_ctx(struct php_can_client_ctx *ctx)
+{
+    if (ctx->evcon) {
+        evhttp_connection_free(ctx->evcon);
+    }
+    if (ctx->zrequest) {
+        zval_ptr_dtor(&ctx->zrequest);
+    }
+    if (ctx->callback) {
+        zval_ptr_dtor(&ctx->callback);
+    }
+    free(ctx);
+}
+
+/**
+ * Response handler for forwarded requests
+ */
+static void forward_response_callback(struct evhttp_request *response, void *arg)
+{
+    struct php_can_client_ctx *ctx = (struct php_can_client_ctx *)arg;
+
+    struct php_can_server_request *origin_request = (struct php_can_server_request*)
+        zend_object_store_get_object(ctx->zrequest TSRMLS_CC);
+    
+    if (!response) {
+        // missing response, send 500 error
+        evhttp_send_error(origin_request->req, 500, NULL);
+        free_client_ctx(ctx);
+        return;
+    }
+    
+    // copy response headers
+    struct evkeyval *header;
+    for (header = ((response->input_headers)->tqh_first); header; header = ((header)->next.tqe_next)) {
+        evhttp_add_header(origin_request->req->output_headers, header->key, header->value);
+    }
+    
+    // coopy response body
+    evbuffer_add_buffer(origin_request->req->output_buffer, response->input_buffer);
+    
+    if (ctx->callback) {
+        
+        zval *zrequest, retval, *args[1];
+        MAKE_STD_ZVAL(zrequest);
+        object_init_ex(zrequest, ce_can_server_request);
+        Z_SET_REFCOUNT_P(zrequest, 1);
+        struct php_can_server_request *request = (struct php_can_server_request *)
+                zend_object_store_get_object(zrequest TSRMLS_CC);
+        request->req = origin_request->req;
+        request->response_code = (long)response->response_code;
+        request->response_len = EVBUFFER_LENGTH(response->input_buffer);
+        
+        args[0] = zrequest;
+        Z_ADDREF_P(args[0]);
+        if (call_user_function(EG(function_table), NULL, ctx->callback, &retval, 1, args TSRMLS_CC) == SUCCESS) {
+            if (response->response_code != request->response_code) {
+                response->response_code = (int)request->response_code;
+            }
+            zval_dtor(&retval);
+        }
+        Z_DELREF_P(args[0]);
+        
+        zval_ptr_dtor(&zrequest);
+        
+        if (EG(exception)) {
+            // TODO: exeption handler
+            zend_clear_exception(TSRMLS_C);
+        }
+    } 
+
+    origin_request->response_len = EVBUFFER_LENGTH(origin_request->req->output_buffer);
+    evhttp_send_reply(origin_request->req, response->response_code, NULL, origin_request->req->output_buffer);
+    
+    if (ctx->server->logformat_len) {
+        struct php_can_server_logentry *logentry;
+        LOGENTRY_CTOR(logentry, origin_request);
+        LOGENTRY_LOG(logentry, ctx->server, ctx->request_id);
+        LOGENTRY_DTOR(logentry);
+    }
+
+    free_client_ctx(ctx);
+}
+
+static void forward_request(const char *url, zval *zrequest, struct php_can_server *server, zval *headers, zval *callback)
+{
+    struct php_can_server_request *request = (struct php_can_server_request*)
+        zend_object_store_get_object(zrequest TSRMLS_CC);
+    
+    struct evhttp_uri *uri = evhttp_uri_parse(url);
+    if (uri == NULL) {
+        request->response_code = 500;
+        spprintf(&request->error, 0, "%s ``%s``", "Cannot parse URL", url);
+    } else {
+        struct php_can_client_ctx *ctx = 0;
+        ctx = calloc(1, sizeof(*ctx));
+        if (!ctx) {
+            request->response_code = 500;
+            spprintf(&request->error, 0, "%s", "Cannot allocate client_ctx");
+            free_client_ctx(ctx);
+        } else {
+            ctx->callback = NULL;
+            if (callback) {
+                Z_ADDREF_P(callback);
+                ctx->callback = callback;
+            }
+            Z_ADDREF_P(zrequest);
+            ctx->request_id = request_counter;
+            ctx->zrequest = zrequest;
+            ctx->server = server;
+            ctx->evcon = evhttp_connection_base_new(CAN_G(can_event_base), NULL, 
+                    evhttp_uri_get_host(uri), evhttp_uri_get_port(uri));
+            if (!ctx->evcon) {
+                request->response_code = 500;
+                spprintf(&request->error, 0, "%s", "Cannot create new evhttp_connection\n");
+                free_client_ctx(ctx);
+            } else {
+                struct evhttp_request *c_req = evhttp_request_new(forward_response_callback, ctx);
+                if (!c_req) {
+                    request->response_code = 500;
+                    spprintf(&request->error, 0, "%s", "Cannot create new evhttp_request\n");
+                    free_client_ctx(ctx);
+                } else {
+
+                    struct evkeyval *header;
+                    for (header=((request->req->input_headers)->tqh_first); header; header=((header)->next.tqe_next)) {
+                        evhttp_add_header(c_req->output_headers, header->key, header->value);
+                    }
+                    
+                    if (headers && Z_TYPE_P(headers) == IS_ARRAY) {
+                        zval **item;
+                        PHP_CAN_FOREACH(headers, item) {
+                            if (keytype == HASH_KEY_IS_STRING && Z_TYPE_PP(item)) {
+                                evhttp_add_header(c_req->output_headers, (const char *)strkey, 
+                                        (const char *)Z_STRVAL_PP(item));
+                            }
+                        }
+                    }
+
+                    char *forwardUri = NULL;
+                    const char *path = evhttp_uri_get_path(uri),
+                               *query = evhttp_uri_get_query(uri);
+                    spprintf(&forwardUri, 0, "%s%s%s", path ? path : "/", query ? "?" : "", query ? query : "");
+                    evhttp_make_request(ctx->evcon, c_req, request->req->type, forwardUri);
+                    request->status = PHP_CAN_SERVER_RESPONSE_STATUS_FORWARD;
+                    efree(forwardUri);
+                }
+            }
+        }
+    }
+}
+
 /**
  * Remove null byte from any string value
  */
@@ -172,7 +323,10 @@ static void request_handler(struct evhttp_request *req, void *arg)
 {
     TSRMLS_FETCH();
 
-    if (request_counter_used) { 
+    if (request_counter_used) {
+        if (request_counter == (LONG_MAX - 1)) {
+            request_counter = 0;
+        }
         request_counter++;
     }
 
@@ -204,7 +358,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
     const char * uri_path = evhttp_uri_get_path(req->uri_elems);
     if (uri_path == NULL) {
         // Bad request
-        request->response_status = 400;
+        request->response_code = 400;
         spprintf(&request->error, 0, "Cannot determine path of the uri");
         
     } else {
@@ -283,7 +437,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                     }
                 }
             }
-            request->response_status = found ? 405 : 404;
+            request->response_code = found ? 405 : 404;
             spprintf(&request->error, 0, "Cannot determine route for the path '%s'", uri_path);
             
         } else {
@@ -302,7 +456,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                             convert_to_double_ex(param);
                         } else if (Z_LVAL_PP(item) == IS_PATH) {
                             if (CHECK_ZVAL_NULL_PATH(*param)) {
-                                request->response_status = 400;
+                                request->response_code = 400;
                                 spprintf(&request->error, 0, "Detected invalid characters in the URI.");
                                 break;
                             }
@@ -344,7 +498,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 }
 
                 if (buffer_len > content_len) {
-                    request->response_status = 400;
+                    request->response_code = 400;
                     spprintf(&request->error, 0, "Actual POST length %ld does not match Content-Length %ld", 
                             buffer_len, content_len);
                 } else {
@@ -366,7 +520,7 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 }
             }
             
-            if (request->response_status == 0) {
+            if (request->response_code == 0) {
                 
                 // call handler
                 args[0] = zrequest;
@@ -377,10 +531,10 @@ static void request_handler(struct evhttp_request *req, void *arg)
 
                 if (call_user_function(EG(function_table), NULL, route->handler, &retval, 2, args TSRMLS_CC) == SUCCESS) {
                     if (request->status == PHP_CAN_SERVER_RESPONSE_STATUS_NONE) {
-                        if (request->response_status == 0) {
-                            request->response_status = 200;
+                        if (request->response_code == 0) {
+                            request->response_code = 200;
                         }
-                        if (request->response_status >= 200 && request->response_status < 300) {
+                        if (request->response_code >= 200 && request->response_code < 300) {
                             if (Z_TYPE(retval) == IS_STRING) {
                                 if (Z_STRLEN(retval) > 0) {
                                     request->response_len = Z_STRLEN(retval);
@@ -389,54 +543,67 @@ static void request_handler(struct evhttp_request *req, void *arg)
                             } else if (Z_TYPE(retval) == IS_NULL) {
                                 // empty response
                             } else {
-                                // non-scalar
+                                
+                                if (Z_TYPE(retval) == IS_OBJECT &&  instanceof_function(Z_OBJCE(retval), ce_can_HTTPForward TSRMLS_CC)) {
+
+                                    zval *url = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), 
+                                            "url", sizeof("url")-1, 1 TSRMLS_CC);
+                                    zval *headers = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), 
+                                            "headers", sizeof("headers")-1, 1 TSRMLS_CC);
+                                    zval *callback = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), 
+                                            "callback", sizeof("callback")-1, 1 TSRMLS_CC);
+                                    forward_request((const char *)Z_STRVAL_P(url), zrequest, server, headers, callback);
+                                    
+                                } else {
                                                                 
 #ifdef HAVE_JSON
-                                // check for existance of Content-Type response header and it's value
-                                // if the value is ``application/json`` we will try to JSON encode it
-                                int foundHeader = 0;
-                                const char *contentType =evhttp_find_header(req->output_headers, "Content-Type");
-                                if (contentType && strcmp(contentType, "application/json") == 0) {
-                                    foundHeader = 1;
-                                }
-                                
-                                zend_class_entry **cep;
-                                if (Z_TYPE(retval) == IS_OBJECT 
-                                        && zend_lookup_class("\\JsonSerializable", sizeof("\\JsonSerializable") - 1, &cep TSRMLS_CC) == SUCCESS
-                                        && instanceof_function(Z_OBJCE(retval), *cep TSRMLS_CC)
-                                ) {
-                                    // implements JsonSerializable
-                                    zval *object = &retval, *result;
-                                    zend_call_method_with_0_params(&object, NULL, NULL, "jsonSerialize", &result);
-                                    if (result) {
-                                        if (Z_TYPE_P(result) == IS_STRING && Z_STRLEN_P(result) > 0) {
-                                            if (foundHeader || -1 != evhttp_add_header(request->req->output_headers, "Content-Type", 
-                                                    "application/json")) {
-                                                request->response_len = Z_STRLEN_P(result);
-                                                evbuffer_add(buffer, Z_STRVAL_P(result), Z_STRLEN_P(result));
-                                            }
-                                        }
-                                        zval_ptr_dtor(&result);
+                                    // check for existance of Content-Type response header and it's value
+                                    // if the value is ``application/json`` we will try to JSON encode it
+                                    int foundHeader = 0;
+                                    const char *contentType =evhttp_find_header(req->output_headers, "Content-Type");
+                                    if (contentType && strcmp(contentType, "application/json") == 0) {
+                                        foundHeader = 1;
                                     }
-                                 
-                                } else if (foundHeader) {
-                                    smart_str encoded = {0};
-                                    php_json_encode(&encoded, &retval, 0 TSRMLS_CC);
-                                    request->response_len = encoded.len;
-                                    evbuffer_add(buffer, encoded.c, encoded.len);
-                                    smart_str_free(&encoded);
-                                }
+
+                                    zend_class_entry **cep;
+                                    if (Z_TYPE(retval) == IS_OBJECT 
+                                            && zend_lookup_class("\\JsonSerializable", sizeof("\\JsonSerializable") - 1, &cep TSRMLS_CC) == SUCCESS
+                                            && instanceof_function(Z_OBJCE(retval), *cep TSRMLS_CC)
+                                    ) {
+                                        // implements JsonSerializable
+                                        zval *object = &retval, *result;
+                                        zend_call_method_with_0_params(&object, NULL, NULL, "jsonSerialize", &result);
+                                        if (result) {
+                                            if (Z_TYPE_P(result) == IS_STRING && Z_STRLEN_P(result) > 0) {
+                                                if (foundHeader || -1 != evhttp_add_header(request->req->output_headers, "Content-Type", 
+                                                        "application/json")) {
+                                                    request->response_len = Z_STRLEN_P(result);
+                                                    evbuffer_add(buffer, Z_STRVAL_P(result), Z_STRLEN_P(result));
+                                                }
+                                            }
+                                            zval_ptr_dtor(&result);
+                                        }
+
+                                    } else if (foundHeader) {
+                                        smart_str encoded = {0};
+                                        php_json_encode(&encoded, &retval, 0 TSRMLS_CC);
+                                        request->response_len = encoded.len;
+                                        evbuffer_add(buffer, encoded.c, encoded.len);
+                                        smart_str_free(&encoded);
+                                    }
 #endif
-                                if (request->response_len == 0) {
-                                    request->response_status = 500;
-                                    spprintf(&request->error, 0, "Request handler must return a string instead of %s", 
-                                        Z_TYPE(retval) == IS_ARRAY ? "array" : 
-                                            Z_TYPE(retval) == IS_OBJECT ? "object" :
-                                                Z_TYPE(retval) == IS_LONG ? "integer" :
-                                                    Z_TYPE(retval) == IS_DOUBLE ? "double" :
-                                                        Z_TYPE(retval) == IS_BOOL ? "boolean‚" :
-                                                            Z_TYPE(retval) == IS_RESOURCE ? "resource" : "unknown"
-                                    );
+
+                                    if (request->response_len == 0) {
+                                        request->response_code = 500;
+                                        spprintf(&request->error, 0, "Request handler must return a string instead of %s", 
+                                            Z_TYPE(retval) == IS_ARRAY ? "array" : 
+                                                Z_TYPE(retval) == IS_OBJECT ? "object" :
+                                                    Z_TYPE(retval) == IS_LONG ? "integer" :
+                                                        Z_TYPE(retval) == IS_DOUBLE ? "double" :
+                                                            Z_TYPE(retval) == IS_BOOL ? "boolean‚" :
+                                                                Z_TYPE(retval) == IS_RESOURCE ? "resource" : "unknown"
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -452,17 +619,29 @@ static void request_handler(struct evhttp_request *req, void *arg)
     
     if(EG(exception)) {
         if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_can_HTTPError TSRMLS_CC)) {
+            
             zval *code = NULL, *error = NULL;
             code  = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "code", sizeof("code")-1, 1 TSRMLS_CC);
             error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
-            request->response_status = code ? Z_LVAL_P(code) : 500;
+            request->response_code = code ? Z_LVAL_P(code) : 500;
             spprintf(&request->error, 0, "%s", error ? Z_STRVAL_P(error) : "Unknown");
+            
+        } else if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_can_HTTPForward TSRMLS_CC)) {
+            
+            zval *url = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), 
+                    "url", sizeof("url")-1, 1 TSRMLS_CC);
+            zval *headers = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), 
+                "headers", sizeof("headers")-1, 1 TSRMLS_CC);
+            zval *callback = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), 
+                "callback", sizeof("callback")-1, 1 TSRMLS_CC);
+            forward_request((const char *)Z_STRVAL_P(url), zrequest, server, headers, callback);
+            
         } else {
             zval *file = NULL, *line = NULL, *error = NULL;
             file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
             line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
             error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
-            request->response_status = 500;
+            request->response_code = 500;
             spprintf(&request->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d \"%s\"", 
                     Z_OBJCE_P(EG(exception))->name,
                     file ? Z_STRVAL_P(file) : NULL,
@@ -473,23 +652,29 @@ static void request_handler(struct evhttp_request *req, void *arg)
         zend_clear_exception(TSRMLS_C);
     }
     
-    if (request->status != PHP_CAN_SERVER_RESPONSE_STATUS_SENT) {
+    int write_log = 0;
+    if (request->status == PHP_CAN_SERVER_RESPONSE_STATUS_NONE) {
         // send response
-        evhttp_send_reply(request->req, request->response_status, NULL, buffer);
+        evhttp_send_reply(request->req, request->response_code, NULL, buffer);
+        write_log = 1;
+    } else if (request->status == PHP_CAN_SERVER_RESPONSE_STATUS_SENDING) {
+        // stop sending unfinished chunk response
+        evhttp_send_reply_end(request->req);
+        write_log = 1;
+    } else if (request->status == PHP_CAN_SERVER_RESPONSE_STATUS_SENT) {
+        write_log = 1;
     }
     
     evbuffer_free(buffer);
 
-    struct php_can_server_logentry *logentry;
-    LOGENTRY_CTOR(logentry, request);
-
-    zval_ptr_dtor(&zrequest);
-
-    if (server->logformat_len) {
+    if (server->logformat_len && write_log) {
+        struct php_can_server_logentry *logentry;
+        LOGENTRY_CTOR(logentry, request);
         LOGENTRY_LOG(logentry, server, request_counter);
+        LOGENTRY_DTOR(logentry);
     }
 
-    LOGENTRY_DTOR(logentry);
+    zval_ptr_dtor(&zrequest);
 }
 
 /**
