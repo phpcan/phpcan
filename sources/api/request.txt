@@ -67,9 +67,30 @@
     
     :returns: string
     
+.. php:method:: findResponseHeader(string $name)
+
+    Try to find the value of the response header with the name $name. This will perform case-insensetive search
+    through all response headers.
+    
+    :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
+    
+    :returns: string
+    
 .. php:method:: getRequestBody()
 
     Get raw content of the request body.
+    
+    :returns: string
+    
+.. php:method:: getResponseBody()
+
+    Get content of the response body that will be sent to the client.
+    
+    :returns: string
+    
+.. php:method:: setResponseBody()
+
+    Set content of the response body that will be sent to the client.
     
     :returns: string
 
