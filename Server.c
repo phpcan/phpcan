@@ -140,13 +140,21 @@ static void forward_response_callback(struct evhttp_request *response, void *arg
                 zend_object_store_get_object(zrequest TSRMLS_CC);
         request->req = origin_request->req;
         request->response_code = (long)response->response_code;
-        request->response_len = EVBUFFER_LENGTH(response->input_buffer);
+        request->response_len = EVBUFFER_LENGTH(origin_request->req->output_buffer);
         
         args[0] = zrequest;
         Z_ADDREF_P(args[0]);
         if (call_user_function(EG(function_table), NULL, ctx->callback, &retval, 1, args TSRMLS_CC) == SUCCESS) {
             if (response->response_code != request->response_code) {
                 response->response_code = (int)request->response_code;
+            }
+            // calculate the content-length header if body length is changed
+            size_t content_len = EVBUFFER_LENGTH(origin_request->req->output_buffer);
+            if (content_len != EVBUFFER_LENGTH(response->input_buffer)) {
+                evhttp_remove_header(origin_request->req->output_headers, "Content-Length");
+                char header_val[22];
+                sprintf(header_val, "%ld", content_len);
+                evhttp_add_header(origin_request->req->output_headers, "Content-Length", header_val);
             }
             zval_dtor(&retval);
         }
@@ -221,9 +229,14 @@ static void forward_request(const char *url, zval *zrequest, struct php_can_serv
                     if (headers && Z_TYPE_P(headers) == IS_ARRAY) {
                         zval **item;
                         PHP_CAN_FOREACH(headers, item) {
-                            if (keytype == HASH_KEY_IS_STRING && Z_TYPE_PP(item)) {
-                                evhttp_add_header(c_req->output_headers, (const char *)strkey, 
-                                        (const char *)Z_STRVAL_PP(item));
+                            if (keytype == HASH_KEY_IS_STRING && Z_TYPE_PP(item) == IS_STRING) {
+                                if (evhttp_find_header(c_req->output_headers, (const char *)strkey) != NULL) {
+                                    evhttp_remove_header(c_req->output_headers, (const char *)strkey);
+                                }
+                                if (Z_STRLEN_PP(item) > 0) {
+                                    evhttp_add_header(c_req->output_headers, (const char *)strkey, 
+                                            (const char *)Z_STRVAL_PP(item));
+                                }
                             }
                         }
                     }
