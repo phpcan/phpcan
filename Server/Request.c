@@ -155,8 +155,8 @@ static zval *read_property(zval *object, zval *member, int type ZEND_LITERAL_KEY
         Z_SET_REFCOUNT_P(retval, 0);
         efree(str);
 
-    } else if (Z_STRLEN_P(member) == (sizeof("remote_addr") - 1)
-            && !memcmp(Z_STRVAL_P(member), "remote_addr", Z_STRLEN_P(member))) {
+    } else if (Z_STRLEN_P(member) == (sizeof("remoteAddr") - 1)
+            && !memcmp(Z_STRVAL_P(member), "remoteAddr", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
         if (request->req->remote_host) {
@@ -166,8 +166,8 @@ static zval *read_property(zval *object, zval *member, int type ZEND_LITERAL_KEY
         }
         Z_SET_REFCOUNT_P(retval, 0);
 
-    } else if (Z_STRLEN_P(member) == (sizeof("remote_port") - 1)
-            && !memcmp(Z_STRVAL_P(member), "remote_port", Z_STRLEN_P(member))) {
+    } else if (Z_STRLEN_P(member) == (sizeof("remotePort") - 1)
+            && !memcmp(Z_STRVAL_P(member), "remotePort", Z_STRLEN_P(member))) {
 
         MAKE_STD_ZVAL(retval);
         ZVAL_LONG(retval, (int)request->req->remote_port);
@@ -468,7 +468,35 @@ static PHP_METHOD(CanServerRequest, findRequestHeader)
     struct php_can_server_request *request = (struct php_can_server_request*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    const char *value =evhttp_find_header(request->req->input_headers, (const char*)Z_STRVAL_P(header));
+    const char *value = evhttp_find_header(request->req->input_headers, (const char*)Z_STRVAL_P(header));
+    if (value == NULL) {
+        RETURN_FALSE;
+    }
+    RETURN_STRING(value, 1);
+}
+
+/**
+ * Find response header
+ */
+static PHP_METHOD(CanServerRequest, findResponseHeader)
+{
+    zval *header = NULL;
+    
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "z", &header) || Z_TYPE_P(header) != IS_STRING || Z_STRLEN_P(header) == 0) {
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "%s%s%s(string $header)",
+            class_name, space, get_active_function_name(TSRMLS_C)
+        );
+        return;
+    }
+    
+    struct php_can_server_request *request = (struct php_can_server_request*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+
+    const char *value = evhttp_find_header(request->req->output_headers, (const char*)Z_STRVAL_P(header));
     if (value == NULL) {
         RETURN_FALSE;
     }
@@ -1392,6 +1420,7 @@ static PHP_METHOD(CanServerRequest, sendResponseEnd)
 static zend_function_entry server_request_methods[] = {
     PHP_ME(CanServerRequest, __construct,          NULL, ZEND_ACC_FINAL | ZEND_ACC_PROTECTED)
     PHP_ME(CanServerRequest, findRequestHeader,    NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRequest, findResponseHeader,   NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, getRequestBody,       NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, getResponseBody,      NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRequest, setResponseBody,      NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
