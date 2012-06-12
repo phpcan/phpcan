@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>\Can\Server\Request API &mdash; PHP Can 0.1.0 documentation</title>
+    <title>\Can\Server\Request API &mdash; PHP Can 0.2.1 documentation</title>
     
     <link rel="stylesheet" href="../static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="../static/pygments.css" type="text/css" />
@@ -16,7 +16,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../',
-        VERSION:     '0.1.0',
+        VERSION:     '0.2.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../static/jquery.js"></script>
     <script type="text/javascript" src="../static/underscore.js"></script>
     <script type="text/javascript" src="../static/doctools.js"></script>
-    <link rel="top" title="PHP Can 0.1.0 documentation" href="../index.html" />
+    <link rel="top" title="PHP Can 0.2.1 documentation" href="../index.html" />
     <link rel="prev" title="\Can\Server\Router API" href="router.html" /> 
   </head>
   <body>
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="router.html" title="\Can\Server\Router API"
              accesskey="P">previous</a> |</li>
-        <li><a href="../index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">PHP Can 0.2.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -177,9 +177,58 @@ through all request headers.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="Can\Server\Request::findResponseHeader">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">findResponseHeader</tt><big>(</big><em>string $name</em><big>)</big><a class="headerlink" href="#Can\Server\Request::findResponseHeader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to find the value of the response header with the name $name. This will perform case-insensetive search
+through all response headers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">string</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="Can\Server\Request::getRequestBody">
 <tt class="descclassname">Can\Server\Request::</tt><tt class="descname">getRequestBody</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server\Request::getRequestBody" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get raw content of the request body.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::getResponseBody">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">getResponseBody</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server\Request::getResponseBody" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get content of the response body that will be sent to the client.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\Request::setResponseBody">
+<tt class="descclassname">Can\Server\Request::</tt><tt class="descname">setResponseBody</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server\Request::setResponseBody" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set content of the response body that will be sent to the client.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -432,12 +481,12 @@ and sets HTTP response status to 302 (by default) or any provided status in a va
         <li class="right" >
           <a href="router.html" title="\Can\Server\Router API"
              >previous</a> |</li>
-        <li><a href="../index.html">PHP Can 0.1.0 documentation</a> &raquo;</li> 
+        <li><a href="../index.html">PHP Can 0.2.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on May 18, 2012.
+      Last updated on Jun 12, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
