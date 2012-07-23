@@ -583,19 +583,15 @@ static void request_handler(struct evhttp_request *req, void *arg)
                                             && zend_lookup_class("\\JsonSerializable", sizeof("\\JsonSerializable") - 1, &cep TSRMLS_CC) == SUCCESS
                                             && instanceof_function(Z_OBJCE(retval), *cep TSRMLS_CC)
                                     ) {
-                                        // implements JsonSerializable
-                                        zval *object = &retval, *result;
-                                        zend_call_method_with_0_params(&object, NULL, NULL, "jsonSerialize", &result);
-                                        if (result) {
-                                            if (Z_TYPE_P(result) == IS_STRING && Z_STRLEN_P(result) > 0) {
-                                                if (foundHeader || -1 != evhttp_add_header(request->req->output_headers, "Content-Type", 
-                                                        "application/json")) {
-                                                    request->response_len = Z_STRLEN_P(result);
-                                                    evbuffer_add(buffer, Z_STRVAL_P(result), Z_STRLEN_P(result));
-                                                }
-                                            }
-                                            zval_ptr_dtor(&result);
+                                        // implements JsonSerializable, so just json_encode it
+                                        smart_str encoded = {0};
+                                        php_json_encode(&encoded, &retval, 0 TSRMLS_CC);
+                                        if (foundHeader || -1 != evhttp_add_header(request->req->output_headers, "Content-Type", 
+                                                "application/json")) {
+                                            request->response_len = encoded.len;
+                                            evbuffer_add(buffer, encoded.c, encoded.len);
                                         }
+                                        smart_str_free(&encoded);
 
                                     } else if (foundHeader) {
                                         smart_str encoded = {0};
