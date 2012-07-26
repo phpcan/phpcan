@@ -30,6 +30,7 @@
 #include "ext/json/php_json.h"
 #endif
 
+#include "ext/standard/base64.h"
 #include "ext/standard/url.h"
 #include "ext/pcre/php_pcre.h"
 #include "php_variables.h"

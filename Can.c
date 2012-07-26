@@ -320,6 +320,7 @@ static zend_function_entry can_functions[] = {
 
 static zend_module_dep can_deps[] = {
     ZEND_MOD_REQUIRED("pcre")
+    ZEND_MOD_REQUIRED("hash")
     {NULL, NULL, NULL}
 };
 
