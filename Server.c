@@ -104,6 +104,26 @@ static void free_client_ctx(struct php_can_client_ctx *ctx)
     free(ctx);
 }
 
+static void
+websocket_read_cb(struct bufferevent *bufev, void *arg)
+{
+    php_printf("websocket_read_cb: length=%ld\n", EVBUFFER_LENGTH(bufev->input));
+    
+}
+
+static void
+websocket_write_cb(struct bufferevent *bufev, void *arg)
+{
+    php_printf("websocket_write_cb\n");
+    bufferevent_enable(bufev, EV_READ);
+}
+
+static void
+websocket_error_cb(struct bufferevent *bufev, short what, void *arg)
+{
+    php_printf("websocket_error_cb\n");
+}
+
 /**
  * Response handler for forwarded requests
  */
@@ -516,11 +536,31 @@ static void request_handler(struct evhttp_request *req, void *arg)
                 Z_DELREF_P(hash_args[0]);
                 Z_DELREF_P(hash_args[1]);
                 Z_DELREF_P(hash_args[2]);
+               
+                // get ownership of the request object, send response
+                evhttp_request_own(request->req);
                 
-                // get ownership of the request object
-                //evhttp_request_own(request->req);
-                //evhttp_request_get_connection(request->req);
+                struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
+                struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon); 
+                struct evbuffer *output = bufferevent_get_output(bufev);
+                evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n");
                 
+                struct evkeyval *header;
+                for (header=((request->req->output_headers)->tqh_first); header; header=((header)->next.tqe_next)) {
+                    evbuffer_add_printf(output, "%s: %s\r\n", header->key, header->value);
+                }
+                evbuffer_add(output, "\r\n", 2);
+
+                bufferevent_enable(bufev, EV_WRITE);
+                
+                bufferevent_setcb(bufev,
+                    websocket_read_cb,
+                    NULL,
+                    websocket_error_cb,
+                    evcon
+                );
+                
+                request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
                 
             } else {
             
