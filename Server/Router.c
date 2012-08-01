@@ -147,8 +147,8 @@ static PHP_METHOD(CanServerRouter, __construct)
     if (routes != NULL) {
         zval **zroute;
         PHP_CAN_FOREACH(routes, zroute) {
-
-            if (Z_TYPE_PP(zroute) != IS_OBJECT || Z_OBJCE_PP(zroute) != ce_can_server_route) {
+            
+            if (Z_TYPE_PP(zroute) != IS_OBJECT || !instanceof_function(Z_OBJCE_PP(zroute), ce_can_server_route TSRMLS_CC)) {
                 php_can_throw_exception(
                     ce_can_InvalidParametersException TSRMLS_CC,
                     "Route must be instance of '%s'", ce_can_server_route->name

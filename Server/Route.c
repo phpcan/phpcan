@@ -79,7 +79,7 @@ static PHP_METHOD(CanServerRoute, __construct)
     zval *uri = NULL, *handler = NULL, *methods = NULL;
     
     if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "zz|z", &uri, &handler, &methods) 
+            "z|zz", &uri, &handler, &methods) 
             || Z_TYPE_P(uri) != IS_STRING 
             || (methods && (Z_TYPE_P(methods) != IS_LONG || Z_LVAL_P(methods) < 1))
     ) {
@@ -95,30 +95,36 @@ static PHP_METHOD(CanServerRoute, __construct)
     struct php_can_server_route *request = (struct php_can_server_route*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
-    char *func_name;
-    zend_bool is_callable = zend_is_callable(handler, 0, &func_name TSRMLS_CC);
-    if (!is_callable) {
-        php_can_throw_exception(
-            ce_can_InvalidCallbackException TSRMLS_CC,
-            "Handler '%s' is not a valid callback",
-            func_name
-        );
+    if (handler) {
+        char *func_name;
+        zend_bool is_callable = zend_is_callable(handler, 0, &func_name TSRMLS_CC);
+        if (!is_callable) {
+            php_can_throw_exception(
+                ce_can_InvalidCallbackException TSRMLS_CC,
+                "Handler '%s' is not a valid callback",
+                func_name
+            );
+            efree(func_name);
+            return;
+        }
         efree(func_name);
-        return;
+        
+        zval_add_ref(&handler);
+        request->handler = handler;
+    } else {
+        MAKE_STD_ZVAL(request->handler);
+        array_init(request->handler);
+        add_next_index_zval(request->handler, getThis());
+        add_next_index_string(request->handler, "handleRequest", 1);
     }
-    efree(func_name);
     
-    zval_add_ref(&handler);
-    request->handler = handler;
-
     long meth = methods != NULL ? Z_LVAL_P(methods) : PHP_CAN_SERVER_ROUTE_METHOD_GET;
     if (meth && meth & PHP_CAN_SERVER_ROUTE_METHOD_ALL) {
         request->methods = meth;
     } else {
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
-            "Unexpected methods",
-            func_name
+            "Unexpected methods"
         );
     }
     
@@ -268,21 +274,21 @@ static PHP_METHOD(CanServerRoute, getMethod)
 }
 
 /**
- * Get request handler associated with this route
+ * Default request handler
  */
-static PHP_METHOD(CanServerRoute, getHandler)
+static PHP_METHOD(CanServerRoute, handleRequest)
 {
-    struct php_can_server_route *route = (struct php_can_server_route*)
-        zend_object_store_get_object(getThis() TSRMLS_CC);
-    
-    RETURN_ZVAL(route->handler, 1, 0);
+    php_can_throw_exception(
+        ce_can_InvalidCallbackException TSRMLS_CC,
+        "Not implemented"
+    );
 }
 
 static zend_function_entry server_route_methods[] = {
-    PHP_ME(CanServerRoute, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerRoute, getUri,      NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerRoute, getMethod,   NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerRoute, getHandler,  NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRoute, __construct,   NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRoute, getUri,        NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRoute, getMethod,     NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRoute, handleRequest, NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
