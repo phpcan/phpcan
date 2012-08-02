@@ -133,6 +133,13 @@ static void
 websocket_error_cb(struct bufferevent *bufev, short what, void *arg)
 {
     php_printf("websocket_error_cb\n");
+    struct evhttp_connection *evcon = (struct evhttp_connection *)arg;
+    evhttp_connection_free(evcon);
+}
+
+static void on_connection_close(struct evhttp_connection *evcon, void *arg)
+{
+    php_printf("on_connection_close()\n");
 }
 
 void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *params TSRMLS_DC)
@@ -146,7 +153,7 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         spprintf(&request->error, 0, "Unsupported WebSocket request method");
         return;
     }
-
+    
     const char *hdr_upgrade, *hdr_conn, *hdr_wskey, *hdr_wskey1, *hdr_wskey2, *hdr_origin, *hdr_wsver;
     char *body = NULL;
     
@@ -157,7 +164,7 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         spprintf(&request->error, 0, "Invalid value of the WebSocket Upgrade request header: %s", hdr_upgrade);
         return;
     }
-
+    
     if ((hdr_conn = evhttp_find_header(request->req->input_headers, "Connection")) == NULL
         || php_can_strpos((char *)hdr_conn, "Upgrade", 0) == FAILURE
     ) {
@@ -184,7 +191,7 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
             return;
         }
     }
-
+    
     if ((hdr_wskey = evhttp_find_header(request->req->input_headers, "Sec-WebSocket-Key")) == NULL
         && ((hdr_wskey1 = evhttp_find_header(request->req->input_headers, "Sec-WebSocket-Key1")) == NULL
          || (hdr_wskey2 = evhttp_find_header(request->req->input_headers, "Sec-WebSocket-Key2")) == NULL)
@@ -265,7 +272,7 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         Z_ADDREF_P(hash_args[0]);
         Z_ADDREF_P(hash_args[1]);
         Z_ADDREF_P(hash_args[2]);
-
+        
         if (call_user_function(EG(function_table), NULL, zhash_func, &hash_retval, 3, hash_args TSRMLS_CC) == SUCCESS) {
             char *base64_str = NULL;
             base64_str = (char *) php_base64_encode((unsigned char*)Z_STRVAL(hash_retval), Z_STRLEN(hash_retval), NULL);
@@ -277,6 +284,11 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         Z_DELREF_P(hash_args[0]);
         Z_DELREF_P(hash_args[1]);
         Z_DELREF_P(hash_args[2]);
+        
+        zval_ptr_dtor(&zhash_func);
+        zval_ptr_dtor(&zhash_arg1);
+        zval_ptr_dtor(&zhash_arg2);
+        zval_ptr_dtor(&zhash_arg3);
         
     } else if (hdr_wskey1 != NULL && hdr_wskey2 != NULL) {
         
@@ -302,12 +314,16 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Protocol", ws_protocol);
     }
     
+    
     // get ownership of the request object, send response
     evhttp_request_own(request->req);
 
-    struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
+    struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);   
     struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon); 
     struct evbuffer *output = bufferevent_get_output(bufev);
+    
+    evhttp_connection_set_closecb(evcon, on_connection_close, request->req);
+    
     evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n");
 
     // write headers
@@ -326,7 +342,7 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
 
     bufferevent_setcb(bufev,
         websocket_read_cb,
-        NULL,
+        websocket_write_cb,
         websocket_error_cb,
         evcon
     );
@@ -468,7 +484,6 @@ static PHP_METHOD(CanServerWebSocketRoute, onClose)
 
 static zend_function_entry server_websocket_route_methods[] = {
     PHP_ME(CanServerWebSocketRoute, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerWebSocketRoute, getUri,      NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketRoute, onHandshake, NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketRoute, onMessage,   NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketRoute, onClose,     NULL, ZEND_ACC_PUBLIC)

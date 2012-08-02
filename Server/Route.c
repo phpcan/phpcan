@@ -284,8 +284,10 @@ static PHP_METHOD(CanServerRoute, handleRequest)
     );
 }
 
+
+
 static zend_function_entry server_route_methods[] = {
-    PHP_ME(CanServerRoute, __construct,   NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRoute, __construct,   NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, getUri,        NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, getMethod,     NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, handleRequest, NULL, ZEND_ACC_PUBLIC)
