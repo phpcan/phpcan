@@ -105,6 +105,7 @@ struct php_can_server_route {
     zval *handler;
     int  methods;
     zval *casts;
+    void *arg;
 };
 
 struct php_can_server_router {

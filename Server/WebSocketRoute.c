@@ -114,18 +114,75 @@ static char *gen_hash(const char *key1, const char *key2, const char *body)
     return retval;
 }
 
+static char 
+*read_data(unsigned char *data, size_t len)
+{
+    char *message = data;
+    int datalength = message[1] & 127;
+    int indexFirstMask = 2;
+    if (datalength == 126) {
+        indexFirstMask = 4;
+    } else if (datalength == 127) {
+        indexFirstMask = 10;
+    }
+    unsigned char mask[4];
+    mask[0] = message[indexFirstMask++];
+    mask[1] = message[indexFirstMask++];
+    mask[2] = message[indexFirstMask++];
+    mask[3] = message[indexFirstMask++];
+    
+    int i = indexFirstMask, index = 0;
+    smart_str buf = {0};
+    while(i < len) {
+        smart_str_appendc(&buf, (char)(message[i++] ^ mask[index++ % 4]));
+    }
+    smart_str_0(&buf);
+    char *retval = estrndup(buf.c, buf.len);
+    smart_str_free(&buf);
+    return retval;
+}
 
 static void
 websocket_read_cb(struct bufferevent *bufev, void *arg)
 {
-    php_printf("websocket_read_cb: length=%ld\n", EVBUFFER_LENGTH(bufev->input));
+    TSRMLS_FETCH();
+    zval *zroute = (zval *)arg;
     
+    size_t len = EVBUFFER_LENGTH(bufev->input);
+    char data[len];
+    int n = evbuffer_remove(bufev->input, data, len);
+    if (data[0] & 0x8) {
+        struct php_can_server_route *route = (struct php_can_server_route*)
+            zend_object_store_get_object(zroute TSRMLS_CC);
+        struct evhttp_connection *evcon = (struct evhttp_connection *)route->arg;
+        evhttp_connection_free(evcon);
+        return;
+    }
+    char *message = read_data(data, len);
+    
+    zval *func, *args[1], *zarg, retval;
+    MAKE_STD_ZVAL(func); ZVAL_STRING(func, "onMessage", 1);
+    MAKE_STD_ZVAL(zarg); ZVAL_STRING(zarg, message, 1);
+    
+    args[0] = zarg;
+    Z_ADDREF_P(args[0]);
+
+    if (call_user_function(EG(function_table), &zroute, func, &retval, 1, args TSRMLS_CC) == SUCCESS) {
+        // handle return value: write to WebSocket
+        zval_dtor(&retval);
+    }
+    
+    Z_DELREF_P(args[0]);
+    
+    zval_ptr_dtor(&zarg);
+    zval_ptr_dtor(&func);
+    efree(message);
 }
 
 static void
 websocket_write_cb(struct bufferevent *bufev, void *arg)
 {
-    php_printf("websocket_write_cb\n");
+    php_printf("websocket_write_cb: length=%ld\n", EVBUFFER_LENGTH(bufev->output));
     bufferevent_enable(bufev, EV_READ);
 }
 
@@ -133,13 +190,19 @@ static void
 websocket_error_cb(struct bufferevent *bufev, short what, void *arg)
 {
     php_printf("websocket_error_cb\n");
-    struct evhttp_connection *evcon = (struct evhttp_connection *)arg;
+    zval *zroute = (zval *)arg;
+    struct php_can_server_route *route = (struct php_can_server_route*)
+        zend_object_store_get_object(zroute TSRMLS_CC);
+    struct evhttp_connection *evcon = (struct evhttp_connection *)route->arg;
     evhttp_connection_free(evcon);
+    return;
+    
 }
 
 static void on_connection_close(struct evhttp_connection *evcon, void *arg)
 {
     php_printf("on_connection_close()\n");
+    // call WebSocket::onClose()
 }
 
 void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *params TSRMLS_DC)
@@ -340,11 +403,15 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
 
     bufferevent_enable(bufev, EV_WRITE);
 
+    struct php_can_server_route *route = (struct php_can_server_route*)
+        zend_object_store_get_object(zroute TSRMLS_CC);
+    route->arg = evcon;
+    
     bufferevent_setcb(bufev,
         websocket_read_cb,
         websocket_write_cb,
         websocket_error_cb,
-        evcon
+        zroute
     );
 
     request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
