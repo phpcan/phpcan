@@ -36,6 +36,7 @@ zend_class_entry *ce_can_server;
 static zend_object_handlers server_obj_handlers;
 
 void php_can_parse_multipart(const char* content_type, struct evbuffer* buffer, zval* post, zval** files TSRMLS_DC);
+void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *params TSRMLS_DC);
 static void server_dtor(void *object TSRMLS_DC);
 
 static zend_object_value server_ctor(zend_class_entry *ce TSRMLS_DC)
@@ -102,26 +103,6 @@ static void free_client_ctx(struct php_can_client_ctx *ctx)
         zval_ptr_dtor(&ctx->callback);
     }
     free(ctx);
-}
-
-static void
-websocket_read_cb(struct bufferevent *bufev, void *arg)
-{
-    php_printf("websocket_read_cb: length=%ld\n", EVBUFFER_LENGTH(bufev->input));
-    
-}
-
-static void
-websocket_write_cb(struct bufferevent *bufev, void *arg)
-{
-    php_printf("websocket_write_cb\n");
-    bufferevent_enable(bufev, EV_READ);
-}
-
-static void
-websocket_error_cb(struct bufferevent *bufev, short what, void *arg)
-{
-    php_printf("websocket_error_cb\n");
 }
 
 /**
@@ -475,92 +456,9 @@ static void request_handler(struct evhttp_request *req, void *arg)
             
         } else {
             
-            // check if it is a WebSocket handshake (rfc6455)
-            const char *hdr_upgrade, *hdr_conn, *hdr_wskey, *hdr_origin, *hdr_wsver;
-            if (request->req->type == EVHTTP_REQ_GET
-               && (hdr_upgrade = evhttp_find_header(request->req->input_headers, "Upgrade")) != NULL
-               && php_can_strpos((char *)hdr_upgrade, "websocket", 0) != FAILURE
-               && (hdr_conn = evhttp_find_header(request->req->input_headers, "Connection")) != NULL
-               && php_can_strpos((char *)hdr_conn, "Upgrade", 0) != FAILURE
-               && (hdr_wskey = evhttp_find_header(request->req->input_headers, "Sec-WebSocket-Key")) != NULL
-               && (hdr_origin = evhttp_find_header(request->req->input_headers, "Origin")) != NULL
-               && (hdr_wsver = evhttp_find_header(request->req->input_headers, "Sec-WebSocket-Version")) != NULL
-               && strcmp(hdr_wsver, "13") == 0
-            ) {
-                // Web socket request
-                request->response_code = 101;
-                evhttp_add_header(request->req->output_headers, "Upgrade", "websocket");
-                evhttp_add_header(request->req->output_headers, "Connection", "Upgrade");
+            if (instanceof_function(Z_OBJCE_PP(zroute), ce_can_server_websocket_route TSRMLS_CC)) {
                 
-                const char *ws_protocol = evhttp_find_header(request->req->input_headers, "Sec-WebSocket-Protocol");
-                if (ws_protocol != NULL) {
-                    evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Protocol", ws_protocol);
-                }
-                
-                // generate Sec-WebSocket-Accept
-                zval *zhush_func, hash_retval, *zhash_arg1, *zhash_arg2, *zhash_arg3, *hash_args[3];
-                char *accept = NULL;
-                
-                MAKE_STD_ZVAL(zhush_func); 
-                ZVAL_STRING(zhush_func, "hash", 1);
-                
-                MAKE_STD_ZVAL(zhash_arg1); 
-                ZVAL_STRING(zhash_arg1, "sha1", 1);
-                
-                MAKE_STD_ZVAL(zhash_arg2);
-                spprintf(&accept, 0, "%s%s", hdr_wskey, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-                ZVAL_STRING(zhash_arg2, accept, 1);
-                efree(accept);
-                
-                MAKE_STD_ZVAL(zhash_arg3);
-                ZVAL_BOOL(zhash_arg3, 1);
-                
-                hash_args[0] = zhash_arg1;
-                hash_args[1] = zhash_arg2;
-                hash_args[2] = zhash_arg3;
-
-                Z_ADDREF_P(hash_args[0]);
-                Z_ADDREF_P(hash_args[1]);
-                Z_ADDREF_P(hash_args[2]);
-                
-                if (call_user_function(EG(function_table), NULL, zhush_func, &hash_retval, 3, hash_args TSRMLS_CC) == SUCCESS) {
-
-                    char *base64_str = NULL;
-                    base64_str = (char *) php_base64_encode((unsigned char*)Z_STRVAL(hash_retval), Z_STRLEN(hash_retval), NULL);
-                    evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Accept", base64_str);
-                    efree(base64_str);
-                    zval_dtor(&hash_retval);
-                    
-                }
-                
-                Z_DELREF_P(hash_args[0]);
-                Z_DELREF_P(hash_args[1]);
-                Z_DELREF_P(hash_args[2]);
-               
-                // get ownership of the request object, send response
-                evhttp_request_own(request->req);
-                
-                struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
-                struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon); 
-                struct evbuffer *output = bufferevent_get_output(bufev);
-                evbuffer_add_printf(output, "HTTP/1.1 101 Switching Protocols\r\n");
-                
-                struct evkeyval *header;
-                for (header=((request->req->output_headers)->tqh_first); header; header=((header)->next.tqe_next)) {
-                    evbuffer_add_printf(output, "%s: %s\r\n", header->key, header->value);
-                }
-                evbuffer_add(output, "\r\n", 2);
-
-                bufferevent_enable(bufev, EV_WRITE);
-                
-                bufferevent_setcb(bufev,
-                    websocket_read_cb,
-                    NULL,
-                    websocket_error_cb,
-                    evcon
-                );
-                
-                request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
+                server_websocket_route_handle_request(*zroute, zrequest, params TSRMLS_CC);
                 
             } else {
             

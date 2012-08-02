@@ -24,6 +24,7 @@
 #include "ext/date/php_date.h"
 #include "ext/standard/php_array.h"
 #include "ext/standard/php_string.h"
+#include "ext/standard/md5.h"
 #include "zend_interfaces.h"
 
 #ifdef HAVE_JSON
@@ -63,6 +64,7 @@ extern zend_class_entry *ce_can_server;
 extern zend_class_entry *ce_can_server_request;
 extern zend_class_entry *ce_can_server_response;
 extern zend_class_entry *ce_can_server_route;
+extern zend_class_entry *ce_can_server_websocket_route;
 extern zend_class_entry *ce_can_server_router;
 
 struct php_can_server {
