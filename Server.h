@@ -24,6 +24,7 @@
 #include "ext/date/php_date.h"
 #include "ext/standard/php_array.h"
 #include "ext/standard/php_string.h"
+#include "ext/standard/php_rand.h"
 #include "ext/standard/md5.h"
 #include "zend_interfaces.h"
 
@@ -59,6 +60,23 @@
 #ifndef IS_PATH
 #define IS_PATH 99
 #endif
+
+#define WS_FRAME_CONTINUATION 0x0
+#define WS_FRAME_STRING       0x1
+#define WS_FRAME_BINARY       0x2
+#define WS_FRAME_CLOSE        0x8
+#define WS_FRAME_PING         0x9
+#define WS_FRAME_PONG         0xA
+
+#define WS_CLOSE_NORMAL               1000
+#define WS_CLOSE_GOING_AWAY           1001
+#define WS_CLOSE_PROTOCOL_ERROR       1002
+#define WS_CLOSE_UNEXPECTED_DATA      1003
+#define WS_CLOSE_NOT_CONSISTENT       1007
+#define WS_CLOSE_GENEIC               1008
+#define WS_CLOSE_MESSAGE_TOOBIG       1009
+#define WS_CLOSE_MISSING_EXTENSION    1010
+#define WS_CLOSE_UNEXPECTED_CONDITION 1011
 
 extern zend_class_entry *ce_can_server;
 extern zend_class_entry *ce_can_server_request;
@@ -105,7 +123,10 @@ struct php_can_server_route {
     zval *handler;
     int  methods;
     zval *casts;
+    // used only in WebSocketRoute
     void *arg;
+    long timeout;
+    
 };
 
 struct php_can_server_router {
