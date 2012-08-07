@@ -258,6 +258,35 @@ static char
     return retval;
 }
 
+static char 
+*encode_data_hixie76(char *data, size_t len, int frame_type, size_t *outlen)
+{
+    if (frame_type == WS_FRAME_CLOSE) {
+        (*outlen) = 2;
+        return estrndup("\xff\x00", 2);
+    } else if (frame_type == WS_FRAME_STRING) {
+        char *retval;
+        (*outlen) = spprintf(&retval, 0, "%c%s%c", 0x00, data, 0xff);
+        return retval;
+    }
+}
+
+static char 
+*decode_data_hixie76(unsigned char *data, size_t len)
+{
+    char buf[len];
+    int i, y = 0;
+    for(i = 0; i < len; i++) {
+        if (data[i] == 0x00) {
+            while(data[++i] != 0xff) {
+                buf[y++] = data[i];
+            }
+        }
+    }
+    buf[y] = '\0';
+    return estrndup(buf, y);
+}
+
 static void
 websocket_read_cb(struct bufferevent *bufev, void *arg)
 {
@@ -266,15 +295,45 @@ websocket_read_cb(struct bufferevent *bufev, void *arg)
     
     size_t len = EVBUFFER_LENGTH(bufev->input);
     unsigned char data[len];
-    int n = evbuffer_remove(bufev->input, data, len);
+    evbuffer_remove(bufev->input, data, len);
     
-    int opcode = data[0];
-    opcode &= ~0x80;
+    int opcode = 0;
+    int is_hixie76 = 0;
+    if (data[0] == 0x00 || data[len-1] == 0xff) {
+        is_hixie76 = 1;
+        if (len == 2 && data[0] == 0xff && data[1] == 0x00) {
+            opcode = WS_FRAME_CLOSE;
+        } else {
+            
+            if ((data[0] & 0x80) == 0x80) {
+                int plen = 0, i = 0, b, n;
+                do {
+                    b = data[++i];
+                    n = b & 0x7F;
+                    plen *= 0x80;
+                    plen += n;
+                } while (b > 0x80);
+                
+                if (len < plen + 2) {
+                    // not enought data
+                    opcode = WS_FRAME_CLOSE;
+                }
+                opcode = WS_FRAME_BINARY;
+            } else {
+                opcode = WS_FRAME_STRING;
+            }
+        }
+    } else {
+        // rfc6455
+        opcode = data[0];
+        opcode &= ~0x80;
+    }
     
     if (opcode == WS_FRAME_CLOSE) {
-        
         size_t outlen = 0;
-        char *encoded = encode_data(NULL, 0, 0, WS_FRAME_CLOSE, &outlen);
+        char *encoded = is_hixie76 ? 
+            encode_data_hixie76(NULL, 0, opcode, &outlen) : 
+            encode_data(NULL, 0, 0, opcode, &outlen);
         bufferevent_disable(bufev, EV_READ);
         bufferevent_enable(bufev, EV_WRITE);
         bufferevent_write(bufev, encoded, outlen);
@@ -284,7 +343,7 @@ websocket_read_cb(struct bufferevent *bufev, void *arg)
     } else if (opcode == WS_FRAME_PING) {
         
         size_t outlen = 0;
-        char *encoded = encode_data(NULL, 0, 0, WS_FRAME_PONG, &outlen);
+        char *encoded = encode_data(NULL, 0, 0, opcode, &outlen);
         bufferevent_disable(bufev, EV_READ);
         bufferevent_enable(bufev, EV_WRITE);
         bufferevent_write(bufev, encoded, outlen);
@@ -293,7 +352,7 @@ websocket_read_cb(struct bufferevent *bufev, void *arg)
         
     } else if (opcode == WS_FRAME_STRING || opcode == WS_FRAME_BINARY) {
         
-        char *message = decode_data(data, len);
+        char *message = is_hixie76 ? decode_data_hixie76(data, len) : decode_data(data, len);
         zval *func, *args[1], *zarg, retval;
         MAKE_STD_ZVAL(func); ZVAL_STRING(func, "onMessage", 1);
         MAKE_STD_ZVAL(zarg); ZVAL_STRING(zarg, message, 1);
@@ -305,8 +364,9 @@ websocket_read_cb(struct bufferevent *bufev, void *arg)
             if (Z_TYPE(retval) == IS_STRING) {
                 if (Z_STRLEN(retval) > 0) {
                     size_t outlen = 0;
-                    char *encoded = encode_data(Z_STRVAL(retval), Z_STRLEN(retval), 
-                            0, WS_FRAME_STRING, &outlen);
+                    char *encoded = is_hixie76 ? 
+                        encode_data_hixie76(Z_STRVAL(retval), Z_STRLEN(retval), WS_FRAME_STRING, &outlen) :
+                        encode_data(Z_STRVAL(retval), Z_STRLEN(retval), 0, WS_FRAME_STRING, &outlen);
                     bufferevent_disable(bufev, EV_READ);
                     bufferevent_enable(bufev, EV_WRITE);
                     bufferevent_write(bufev, encoded, outlen);
@@ -548,8 +608,10 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
         struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon);
         struct evbuffer *buffer = bufferevent_get_input(bufev);
+        unsigned char key3[8];
+        evbuffer_remove(buffer, key3, 8);
        
-        body = gen_sum(hdr_wskey1, hdr_wskey2, EVBUFFER_DATA(buffer)); 
+        body = gen_sum(hdr_wskey1, hdr_wskey2, key3); 
         
     }
     
