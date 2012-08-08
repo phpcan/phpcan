@@ -409,6 +409,104 @@ Here is an example how to implement a HTTP service that servs static content.
     );
     
     ?>
+
+
+WebSockets
+----------
+
+.. code-block:: php
+
+    <?php
+
+    use \Can\Server;
+    use \Can\Server\Router;
+    use \Can\Server\WebSocketRoute;
+    use \Can\Server\WebSocketContext;
+    use \Can\Server\Request;
+
+    class EchoWebSocketRoute extends WebSocketRoute
+    {
+        /**
+         * This method will be invoked before WebSocket HTTP handshake will be send to the client.
+         * Use this method to examine incoming request, request arguments, add additional response
+         * headers etc.
+         */
+        public function onHandshake(Request $request, array $args, WebSocketContext $context)
+        {
+            // Set WebSocket timeout to 5 minutes
+            $context->setTimeout(300);
+        }
+
+        /**
+         * This method will be invoked on incoming WebSocket message. The return value of this
+         * method will be send to the client as response message. The $context instance represents
+         * the WebSocket connection which can be closed by calling $context->close() method.
+         */
+        public function onMessage($message, WebSocketContext $context)
+        {
+            return 'Echo: ' . $message;
+        }
+
+        /**
+         * This method will be invoked on closing of the WebSocket connection by the server or by the client.
+         */
+        public function onClose()
+        {
+
+        }
+    }
+    
+    $server = new Server('127.0.0.1', 4567, 
+        "time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error\n");
+    $server->start(
+        new Router(
+            array(
+                new EchoWebSocketRoute('/echo'),
+                new Route(
+                    '/',
+                    function() {
+                        return '
+    <!DOCTYPE html>
+    <meta charset="utf-8" />
+    <title>WebSocket Test</title>
+    <script language="javascript" type="text/javascript">
+    var wsUri = "ws://localhost:4567/echo";
+    var output;
+    function init() { output = document.getElementById("output"); testWebSocket(); }
+    function testWebSocket()
+    {
+        websocket = new WebSocket(wsUri);
+        websocket.onopen = function(evt) { onOpen(evt) };
+        websocket.onclose = function(evt) { onClose(evt) };
+        websocket.onmessage = function(evt) { onMessage(evt) };
+        websocket.onerror = function(evt) { onError(evt) };
+    }
+    function onOpen(evt) { writeToScreen("CONNECTED"); }
+    function onClose(evt) { writeToScreen("DISCONNECTED" + (typeof evt.data !="undefined" ? ": " + evt.data : "")); }
+    function onMessage(evt) { writeToScreen("<span style=\"color: blue;\">RESPONSE: " + evt.data+"</span>"); }
+    function onError(evt) { writeToScreen("<span style=\"color: red;\">ERROR:</span> " + evt.data); }
+    function doSend(message) { writeToScreen("SENT: " + message); websocket.send(message); }
+    function writeToScreen(message) {
+        var pre = document.createElement("p");
+        pre.style.wordWrap = "break-word";
+        pre.innerHTML = message;
+        output.appendChild(pre);
+    }
+    window.addEventListener("load", init, false);
+    </script>
+    <h2>WebSocket Test</h2>
+    <input id="sendMessage" size="35" value="I love WebSocket">
+    <button id="send" onclick="javascript:doSend(document.getElementById(\'sendMessage\').value);">Send</button>
+    <button id="send" onclick="javascript:websocket.close();">Close</button>
+    <div id="output"></div>
+    </html>';
+                    }
+                )
+            )
+        )
+    );
+    
+    ?>
    
     
 To be continued...
