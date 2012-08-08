@@ -19,9 +19,12 @@
 #include "Server.h"
 
 zend_class_entry *ce_can_server_websocket_route;
+zend_class_entry *ce_can_server_websocket_ctx;
 static zend_object_handlers server_websocket_route_obj_handlers;
+static zend_object_handlers server_websocket_ctx_obj_handlers;
 
 static void server_websocket_route_dtor(void *object TSRMLS_DC);
+static void server_websocket_ctx_dtor(void *object TSRMLS_DC);
 
 static zend_object_value server_websocket_route_ctor(zend_class_entry *ce TSRMLS_DC)
 {
@@ -35,8 +38,6 @@ static zend_object_value server_websocket_route_ctor(zend_class_entry *ce TSRMLS
     route->regexp = NULL;
     route->route = NULL;
     route->casts = NULL;
-    route->arg = NULL;
-    route->timeout = 360; // one hour by default
     retval.handle = zend_objects_store_put(route,       
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_websocket_route_dtor,
@@ -70,7 +71,47 @@ static void server_websocket_route_dtor(void *object TSRMLS_DC)
     zend_objects_store_del_ref(&route->refhandle TSRMLS_CC);
     zend_object_std_dtor(&route->std TSRMLS_CC);
     efree(route);
+}
 
+static zend_object_value server_websocket_ctx_ctor(zend_class_entry *ce TSRMLS_DC)
+{
+    struct php_can_websocket_ctx *ctx;
+    zend_object_value retval;
+
+    ctx = ecalloc(1, sizeof(*ctx));
+    zend_object_std_init(&ctx->std, ce TSRMLS_CC);
+    ctx->timeout = 360; // one hour by default
+    ctx->evcon = NULL;
+    ctx->req = NULL;
+    ctx->zroute = NULL;
+    ctx->ident = NULL;
+    retval.handle = zend_objects_store_put(ctx,       
+            (zend_objects_store_dtor_t)zend_objects_destroy_object,
+            server_websocket_ctx_dtor,
+            NULL TSRMLS_CC);
+    retval.handlers = &server_websocket_ctx_obj_handlers;
+    return retval;
+}
+
+static void server_websocket_ctx_dtor(void *object TSRMLS_DC)
+{
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)object;
+
+    if (ctx->ident) {
+        efree(ctx->ident);
+    }
+    
+    if (ctx->evcon) {
+        evhttp_connection_free(ctx->evcon);
+    }
+
+    if (ctx->req) {
+        evhttp_request_free(ctx->req);
+    }
+
+    zend_objects_store_del_ref(&ctx->refhandle TSRMLS_CC);
+    zend_object_std_dtor(&ctx->std TSRMLS_CC);
+    efree(ctx);
 }
 
 unsigned long parse_key(const char *key)
@@ -92,7 +133,7 @@ unsigned long parse_key(const char *key)
  * 
  * @param key1
  * @param key2
- * @param body
+ * @param key3
  * @return 
  */
 static char *gen_sum(const char *key1, const char *key2, const char *key3)
@@ -291,49 +332,52 @@ static void
 websocket_read_cb(struct bufferevent *bufev, void *arg)
 {
     TSRMLS_FETCH();
-    zval *zroute = (zval *)arg;
+    zval *websocket_ctx = (zval *)arg;
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx *)
+        zend_object_store_get_object(websocket_ctx TSRMLS_CC);
     
     size_t len = EVBUFFER_LENGTH(bufev->input);
     unsigned char data[len];
     evbuffer_remove(bufev->input, data, len);
     
     int opcode = 0;
-    int is_hixie76 = 0;
-    if (data[0] == 0x00 || data[len-1] == 0xff) {
-        is_hixie76 = 1;
-        if (len == 2 && data[0] == 0xff && data[1] == 0x00) {
+    if (ctx->rfc6455 == 0) {
+        if (data[0] != 0x00 || data[len-1] != 0xff) {
+            // frame error
             opcode = WS_FRAME_CLOSE;
         } else {
-            
-            if ((data[0] & 0x80) == 0x80) {
-                int plen = 0, i = 0, b, n;
-                do {
-                    b = data[++i];
-                    n = b & 0x7F;
-                    plen *= 0x80;
-                    plen += n;
-                } while (b > 0x80);
-                
-                if (len < plen + 2) {
-                    // not enought data
-                    opcode = WS_FRAME_CLOSE;
-                }
-                opcode = WS_FRAME_BINARY;
+            if (len == 2 && data[0] == 0xff && data[1] == 0x00) {
+                opcode = WS_FRAME_CLOSE;
             } else {
-                opcode = WS_FRAME_STRING;
+                if ((data[0] & 0x80) == 0x80) {
+                    int plen = 0, i = 0, b, n;
+                    do {
+                        b = data[++i];
+                        n = b & 0x7F;
+                        plen *= 0x80;
+                        plen += n;
+                    } while (b > 0x80);
+
+                    if (len < plen + 2) {
+                        // not enought data
+                        opcode = WS_FRAME_CLOSE;
+                    }
+                    opcode = WS_FRAME_BINARY;
+                } else {
+                    opcode = WS_FRAME_STRING;
+                }
             }
         }
     } else {
-        // rfc6455
         opcode = data[0];
         opcode &= ~0x80;
     }
     
     if (opcode == WS_FRAME_CLOSE) {
         size_t outlen = 0;
-        char *encoded = is_hixie76 ? 
-            encode_data_hixie76(NULL, 0, opcode, &outlen) : 
-            encode_data(NULL, 0, 0, opcode, &outlen);
+        char *encoded = ctx->rfc6455 ? 
+            encode_data(NULL, 0, 0, opcode, &outlen) :
+            encode_data_hixie76(NULL, 0, opcode, &outlen);
         bufferevent_disable(bufev, EV_READ);
         bufferevent_enable(bufev, EV_WRITE);
         bufferevent_write(bufev, encoded, outlen);
@@ -352,21 +396,24 @@ websocket_read_cb(struct bufferevent *bufev, void *arg)
         
     } else if (opcode == WS_FRAME_STRING || opcode == WS_FRAME_BINARY) {
         
-        char *message = is_hixie76 ? decode_data_hixie76(data, len) : decode_data(data, len);
-        zval *func, *args[1], *zarg, retval;
+        char *message = ctx->rfc6455 ? 
+            decode_data(data, len) : decode_data_hixie76(data, len);
+        zval *func, *args[2], *zarg, retval;
         MAKE_STD_ZVAL(func); ZVAL_STRING(func, "onMessage", 1);
         MAKE_STD_ZVAL(zarg); ZVAL_STRING(zarg, message, 1);
 
         args[0] = zarg;
+        args[1] = websocket_ctx;
         Z_ADDREF_P(args[0]);
+        Z_ADDREF_P(args[1]);
 
-        if (call_user_function(EG(function_table), &zroute, func, &retval, 1, args TSRMLS_CC) == SUCCESS) {
+        if (call_user_function(EG(function_table), &ctx->zroute, func, &retval, 2, args TSRMLS_CC) == SUCCESS) {
             if (Z_TYPE(retval) == IS_STRING) {
                 if (Z_STRLEN(retval) > 0) {
                     size_t outlen = 0;
-                    char *encoded = is_hixie76 ? 
-                        encode_data_hixie76(Z_STRVAL(retval), Z_STRLEN(retval), WS_FRAME_STRING, &outlen) :
-                        encode_data(Z_STRVAL(retval), Z_STRLEN(retval), 0, WS_FRAME_STRING, &outlen);
+                    char *encoded = ctx->rfc6455 ? 
+                        encode_data(Z_STRVAL(retval), Z_STRLEN(retval), 0, WS_FRAME_STRING, &outlen) :
+                        encode_data_hixie76(Z_STRVAL(retval), Z_STRLEN(retval), WS_FRAME_STRING, &outlen);
                     bufferevent_disable(bufev, EV_READ);
                     bufferevent_enable(bufev, EV_WRITE);
                     bufferevent_write(bufev, encoded, outlen);
@@ -387,6 +434,7 @@ websocket_read_cb(struct bufferevent *bufev, void *arg)
         }
 
         Z_DELREF_P(args[0]);
+        Z_DELREF_P(args[1]);
         zval_ptr_dtor(&zarg);
         zval_ptr_dtor(&func);
         efree(message);
@@ -395,7 +443,9 @@ websocket_read_cb(struct bufferevent *bufev, void *arg)
             
             // we close the connection if unhandled exception occurs
             size_t outlen = 0;
-            char *encoded = encode_data(NULL, 0, 0, WS_FRAME_CLOSE, &outlen);
+            char *encoded = ctx->rfc6455 ? 
+                encode_data(NULL, 0, 0, WS_FRAME_CLOSE, &outlen) :
+                encode_data_hixie76(NULL, 0, WS_FRAME_CLOSE, &outlen);
             bufferevent_disable(bufev, EV_READ);
             bufferevent_enable(bufev, EV_WRITE);
             bufferevent_write(bufev, encoded, outlen);
@@ -419,24 +469,33 @@ websocket_write_cb(struct bufferevent *bufev, void *arg)
 static void
 websocket_error_cb(struct bufferevent *bufev, short what, void *arg)
 {
-    zval *zroute = (zval *)arg;
-    struct php_can_server_route *route = (struct php_can_server_route*)
-        zend_object_store_get_object(zroute TSRMLS_CC);
-    struct evhttp_connection *evcon = (struct evhttp_connection *)route->arg;
-    evhttp_connection_free(evcon);
+    zval *websocket_ctx = (zval *)arg;
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx *)
+        zend_object_store_get_object(websocket_ctx TSRMLS_CC);
+    evhttp_connection_free(ctx->evcon);
+    ctx->evcon = NULL;
 }
 
 static void on_connection_close(struct evhttp_connection *evcon, void *arg)
 {
     TSRMLS_FETCH();
-    zval *zroute = (zval *)arg;
+    zval *websocket_ctx = (zval *)arg;
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx *)
+        zend_object_store_get_object(websocket_ctx TSRMLS_CC);
     zval *func, retval;
-    MAKE_STD_ZVAL(func); ZVAL_STRING(func, "onClose", 1);
-
-    if (call_user_function(EG(function_table), &zroute, func, &retval, 0, NULL TSRMLS_CC) == SUCCESS) {
+    MAKE_STD_ZVAL(func);
+    ZVAL_STRING(func, "onClose", 1);
+    if (call_user_function(EG(function_table), &ctx->zroute, func, &retval, 0, NULL TSRMLS_CC) == SUCCESS) {
         zval_dtor(&retval);
     }
+    if(EG(exception)) {
+        // ignore exceptions within WebSocketRoute::onClose()
+        zend_clear_exception(TSRMLS_C);
+    }
     zval_ptr_dtor(&func);
+    ctx->evcon = NULL;
+    ctx->req = NULL;
+    zval_ptr_dtor(&websocket_ctx);
 }
 
 void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *params TSRMLS_DC)
@@ -504,52 +563,61 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         return;
     }
     
-    if (Z_OBJCE_P(zroute) != ce_can_server_websocket_route) {
-        
-        zval *callback,  retval, *args[2];
-        MAKE_STD_ZVAL(callback);
-        ZVAL_STRING(callback, "onHandshake", 1);
+    zval *callback, *websocket_ctx, retval, *args[3];
+    
+    MAKE_STD_ZVAL(websocket_ctx);
+    object_init_ex(websocket_ctx, ce_can_server_websocket_ctx);
+    Z_SET_REFCOUNT_P(websocket_ctx, 1);
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx *)
+        zend_object_store_get_object(websocket_ctx TSRMLS_CC);
+    ctx->ident = emalloc(33);
+    php_spl_object_hash(websocket_ctx, ctx->ident TSRMLS_CC); 
+    
+    MAKE_STD_ZVAL(callback);
+    ZVAL_STRING(callback, "onHandshake", 1);
 
-        args[0] = zrequest;
-        args[1] = params;
+    args[0] = zrequest;
+    args[1] = params;
+    args[2] = websocket_ctx;
 
-        Z_ADDREF_P(args[0]);
-        Z_ADDREF_P(args[1]);
+    Z_ADDREF_P(args[0]);
+    Z_ADDREF_P(args[1]);
+    Z_ADDREF_P(args[2]);
 
-        if (call_user_function(EG(function_table), &zroute, callback, &retval, 2, args TSRMLS_CC) == SUCCESS) {
-            zval_dtor(&retval);
+    if (call_user_function(EG(function_table), &zroute, callback, &retval, 3, args TSRMLS_CC) == SUCCESS) {
+        zval_dtor(&retval);
+    }
+    Z_DELREF_P(args[0]);
+    Z_DELREF_P(args[1]);
+    Z_DELREF_P(args[2]);
+
+    zval_ptr_dtor(&callback);
+
+    if(EG(exception)) {
+
+        if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_can_HTTPError TSRMLS_CC)) {
+
+            zval *code = NULL, *error = NULL;
+            code  = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "code", sizeof("code")-1, 1 TSRMLS_CC);
+            error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
+            request->response_code = code ? Z_LVAL_P(code) : 500;
+            spprintf(&request->error, 0, "%s", error ? Z_STRVAL_P(error) : "Unknown");
+
+        } else {
+            zval *file = NULL, *line = NULL, *error = NULL;
+            file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
+            line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
+            error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
+            request->response_code = 500;
+            spprintf(&request->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d \"%s\"", 
+                    Z_OBJCE_P(EG(exception))->name,
+                    file ? Z_STRVAL_P(file) : NULL,
+                    line ? (int)Z_LVAL_P(line) : 0,
+                    error ? Z_STRVAL_P(error) : ""
+            );
         }
-        Z_DELREF_P(args[0]);
-        Z_DELREF_P(args[1]);
-
-        zval_ptr_dtor(&callback);
-
-        if(EG(exception)) {
-
-            if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_can_HTTPError TSRMLS_CC)) {
-
-                zval *code = NULL, *error = NULL;
-                code  = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "code", sizeof("code")-1, 1 TSRMLS_CC);
-                error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
-                request->response_code = code ? Z_LVAL_P(code) : 500;
-                spprintf(&request->error, 0, "%s", error ? Z_STRVAL_P(error) : "Unknown");
-
-            } else {
-                zval *file = NULL, *line = NULL, *error = NULL;
-                file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
-                line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
-                error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
-                request->response_code = 500;
-                spprintf(&request->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d \"%s\"", 
-                        Z_OBJCE_P(EG(exception))->name,
-                        file ? Z_STRVAL_P(file) : NULL,
-                        line ? (int)Z_LVAL_P(line) : 0,
-                        error ? Z_STRVAL_P(error) : ""
-                );
-            }
-            zend_clear_exception(TSRMLS_C);
-            return;
-        }
+        zend_clear_exception(TSRMLS_C);
+        return;
     }
 
     int rfc6455 = 0;
@@ -624,15 +692,17 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Protocol", ws_protocol);
     }
     
-    
     // get ownership of the request object, send response
     evhttp_request_own(request->req);
+    ctx->req = request->req;
+    ctx->evcon = evhttp_request_get_connection(request->req);
+    ctx->rfc6455 = rfc6455;
+    ctx->zroute = zroute;
 
-    struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
-    struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon);
+    struct bufferevent *bufev = evhttp_connection_get_bufferevent(ctx->evcon);
     struct evbuffer *output = bufferevent_get_output(bufev);
     
-    evhttp_connection_set_closecb(evcon, on_connection_close, request->req);
+    evhttp_connection_set_closecb(ctx->evcon, on_connection_close, websocket_ctx);
     
     bufferevent_enable(bufev, EV_READ|EV_WRITE);
     
@@ -651,16 +721,13 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         efree(body);
     }
 
-    struct php_can_server_route *route = (struct php_can_server_route*)
-        zend_object_store_get_object(zroute TSRMLS_CC);
-    evhttp_connection_set_timeout(evcon, route->timeout);
-    route->arg = evcon;
+    evhttp_connection_set_timeout(ctx->evcon, ctx->timeout);
     
     bufferevent_setcb(bufev,
         websocket_read_cb,
         websocket_write_cb,
         websocket_error_cb,
-        zroute
+        websocket_ctx
     );
     
     request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
@@ -737,32 +804,6 @@ static PHP_METHOD(CanServerWebSocketRoute, __construct)
 }
 
 /**
- * Set WebSocket timeout
- *
- */
-static PHP_METHOD(CanServerWebSocketRoute, setTimeout)
-{
-    zval *timeout = NULL;
-    
-    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
-            "z", &timeout) 
-            || Z_TYPE_P(timeout) != IS_LONG
-    ) {
-        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
-        php_can_throw_exception(
-            ce_can_InvalidParametersException TSRMLS_CC,
-            "%s%s%s(int $timeout)",
-            class_name, space, get_active_function_name(TSRMLS_C)
-        );
-        return;
-    }
-    
-    struct php_can_server_route *route = (struct php_can_server_route*)
-        zend_object_store_get_object(getThis() TSRMLS_CC);
-    route->timeout = Z_LVAL_P(timeout);
-}
-
-/**
  * Invoked on incoming clint handshake.
  * Override this method to check incoming request data 
  * or/and to inject additional response headers
@@ -785,17 +826,53 @@ static PHP_METHOD(CanServerWebSocketRoute, onMessage)
 }
 
 /**
- * Close WebSocket connection
+ * Invoked when the WebSocket is closed.
  */
-static PHP_METHOD(CanServerWebSocketRoute, close) 
+static PHP_METHOD(CanServerWebSocketRoute, onClose) 
 {
-    struct php_can_server_route *route = (struct php_can_server_route*)
+
+}
+
+/**
+ * Set WebSocket timeout
+ *
+ */
+static PHP_METHOD(CanServerWebSocketContext, setTimeout)
+{
+    zval *timeout = NULL;
+    
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "z", &timeout) 
+            || Z_TYPE_P(timeout) != IS_LONG
+    ) {
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "%s%s%s(int $timeout)",
+            class_name, space, get_active_function_name(TSRMLS_C)
+        );
+        return;
+    }
+    
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
-    if (route->arg != NULL) {
-        struct evhttp_connection *evcon = (struct evhttp_connection *)route->arg;
-        struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon);
+    ctx->timeout = Z_LVAL_P(timeout);
+}
+
+/**
+ * Close WebSocket.
+ */
+static PHP_METHOD(CanServerWebSocketContext, close) 
+{
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    if (ctx->evcon != NULL) {
+        struct bufferevent *bufev = evhttp_connection_get_bufferevent(ctx->evcon);
         size_t outlen = 0;
-        char *encoded = encode_data(NULL, 0, 0, WS_FRAME_CLOSE, &outlen);
+        char *encoded = ctx->rfc6455 ? 
+            encode_data(NULL, 0, 0, WS_FRAME_CLOSE, &outlen) :
+            encode_data_hixie76(NULL, 0, WS_FRAME_CLOSE, &outlen);
         bufferevent_disable(bufev, EV_READ);
         bufferevent_enable(bufev, EV_WRITE);
         bufferevent_write(bufev, encoded, outlen);
@@ -805,28 +882,27 @@ static PHP_METHOD(CanServerWebSocketRoute, close)
     RETURN_FALSE;
 }
 
-/**
- * Invoked when the WebSocket is closed.
- */
-static PHP_METHOD(CanServerWebSocketRoute, onClose) 
-{
-
-}
-
 static zend_function_entry server_websocket_route_methods[] = {
     PHP_ME(CanServerWebSocketRoute, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerWebSocketRoute, setTimeout,  NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketRoute, onHandshake, NULL, ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerWebSocketRoute, onMessage,   NULL, ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerWebSocketRoute, close,       NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketRoute, onMessage,   NULL, ZEND_ACC_PUBLIC| ZEND_ACC_ABSTRACT)
     PHP_ME(CanServerWebSocketRoute, onClose,     NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
-static void server_websocket_route_init(TSRMLS_D)
+static zend_function_entry server_websocket_ctx_methods[] = {
+    PHP_ME(CanServerWebSocketContext, setTimeout,  NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketContext, close,     NULL, ZEND_ACC_PUBLIC)
+    {NULL, NULL, NULL}
+};
+
+static void server_websocket_init(TSRMLS_D)
 {
     memcpy(&server_websocket_route_obj_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
     server_websocket_route_obj_handlers.clone_obj = NULL;
+    
+    memcpy(&server_websocket_ctx_obj_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+    server_websocket_ctx_obj_handlers.clone_obj = NULL;
 
     // class \Can\Server\WebSocketRoute extends \Can\Server\Route
     PHP_CAN_REGISTER_SUBCLASS(
@@ -836,25 +912,34 @@ static void server_websocket_route_init(TSRMLS_D)
         server_websocket_route_ctor,
         server_websocket_route_methods
     );
+    ce_can_server_websocket_route->ce_flags |= ZEND_ACC_EXPLICIT_ABSTRACT_CLASS;
+    
+    // class \Can\Server\WebSocketContext
+    PHP_CAN_REGISTER_CLASS(
+        &ce_can_server_websocket_ctx,
+        ZEND_NS_NAME(PHP_CAN_SERVER_NS, "WebSocketContext"),
+        server_websocket_ctx_ctor,
+        server_websocket_ctx_methods
+    );
 }
 
-PHP_MINIT_FUNCTION(can_server_websocket_route)
+PHP_MINIT_FUNCTION(can_server_websocket)
 {
-    server_websocket_route_init(TSRMLS_C);
+    server_websocket_init(TSRMLS_C);
     return SUCCESS;
 }
 
-PHP_MSHUTDOWN_FUNCTION(can_server_websocket_route)
+PHP_MSHUTDOWN_FUNCTION(can_server_websocket)
 {
     return SUCCESS;
 }
 
-PHP_RINIT_FUNCTION(can_server_websocket_route)
+PHP_RINIT_FUNCTION(can_server_websocket)
 {
     return SUCCESS;
 }
 
-PHP_RSHUTDOWN_FUNCTION(can_server_websocket_route)
+PHP_RSHUTDOWN_FUNCTION(can_server_websocket)
 {
     return SUCCESS;
 }

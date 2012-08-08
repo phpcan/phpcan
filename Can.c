@@ -348,7 +348,7 @@ PHP_MINIT_FUNCTION(can)
         & PHP_MINIT(can_server)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MINIT(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MINIT(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MINIT(can_server_websocket_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MINIT(can_server_websocket)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MINIT(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
     ;
 }
@@ -358,7 +358,7 @@ PHP_MSHUTDOWN_FUNCTION(can)
         & PHP_MSHUTDOWN(can_server)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MSHUTDOWN(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MSHUTDOWN(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_MSHUTDOWN(can_server_websocket_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_MSHUTDOWN(can_server_websocket)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_MSHUTDOWN(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
     ;
 }
@@ -369,7 +369,7 @@ PHP_RINIT_FUNCTION(can)
         & PHP_RINIT(can_server)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RINIT(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RINIT(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RINIT(can_server_websocket_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RINIT(can_server_websocket)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RINIT(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
     ;
 }
@@ -379,7 +379,7 @@ PHP_RSHUTDOWN_FUNCTION(can)
         & PHP_RSHUTDOWN(can_server)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RSHUTDOWN(can_server_router)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RSHUTDOWN(can_server_route)(INIT_FUNC_ARGS_PASSTHRU)
-        & PHP_RSHUTDOWN(can_server_websocket_route)(INIT_FUNC_ARGS_PASSTHRU)
+        & PHP_RSHUTDOWN(can_server_websocket)(INIT_FUNC_ARGS_PASSTHRU)
         & PHP_RSHUTDOWN(can_server_request)(INIT_FUNC_ARGS_PASSTHRU)
     ;
 }

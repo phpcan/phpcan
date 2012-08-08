@@ -83,6 +83,7 @@ extern zend_class_entry *ce_can_server_request;
 extern zend_class_entry *ce_can_server_response;
 extern zend_class_entry *ce_can_server_route;
 extern zend_class_entry *ce_can_server_websocket_route;
+extern zend_class_entry *ce_can_server_websocket_ctx;
 extern zend_class_entry *ce_can_server_router;
 
 struct php_can_server {
@@ -123,10 +124,6 @@ struct php_can_server_route {
     zval *handler;
     int  methods;
     zval *casts;
-    // used only in WebSocketRoute
-    void *arg;
-    long timeout;
-    
 };
 
 struct php_can_server_router {
@@ -179,6 +176,17 @@ struct php_can_client_ctx {
     zval *callback;
     struct php_can_server *server;
     struct evhttp_connection *evcon;
+};
+
+struct php_can_websocket_ctx {
+    zend_object std;
+    zval refhandle;
+    long timeout;
+    char *ident;
+    struct evhttp_request *req;
+    struct evhttp_connection *evcon;
+    zval *zroute;
+    int rfc6455;
 };
 
 #define SETNOW(double_now) \

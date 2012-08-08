@@ -197,7 +197,6 @@ static void forward_request(const char *url, zval *zrequest, struct php_can_serv
         if (!ctx) {
             request->response_code = 500;
             spprintf(&request->error, 0, "%s", "Cannot allocate client_ctx");
-            free_client_ctx(ctx);
         } else {
             ctx->callback = NULL;
             if (callback) {
