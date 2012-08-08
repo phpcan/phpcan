@@ -84,7 +84,7 @@ static zend_object_value server_websocket_ctx_ctor(zend_class_entry *ce TSRMLS_D
     ctx->evcon = NULL;
     ctx->req = NULL;
     ctx->zroute = NULL;
-    ctx->ident = NULL;
+    ctx->id = NULL;
     retval.handle = zend_objects_store_put(ctx,       
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_websocket_ctx_dtor,
@@ -97,8 +97,8 @@ static void server_websocket_ctx_dtor(void *object TSRMLS_DC)
 {
     struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)object;
 
-    if (ctx->ident) {
-        efree(ctx->ident);
+    if (ctx->id) {
+        efree(ctx->id);
     }
     
     if (ctx->evcon) {
@@ -112,6 +112,56 @@ static void server_websocket_ctx_dtor(void *object TSRMLS_DC)
     zend_objects_store_del_ref(&ctx->refhandle TSRMLS_CC);
     zend_object_std_dtor(&ctx->std TSRMLS_CC);
     efree(ctx);
+}
+
+static zval *read_property(zval *object, zval *member, int type ZEND_LITERAL_KEY_DC TSRMLS_DC)
+{
+    zval tmp_member;
+    zval *retval;
+    zend_object_handlers *std_hnd;
+
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
+        zend_object_store_get_object(object TSRMLS_CC);
+    
+    if (member->type != IS_STRING) {
+        tmp_member = *member;
+        zval_copy_ctor(&tmp_member);
+        convert_to_string(&tmp_member);
+        member = &tmp_member;
+    }
+    
+    if (Z_STRLEN_P(member) == (sizeof("id") - 1)
+            && !memcmp(Z_STRVAL_P(member), "id", Z_STRLEN_P(member))) {
+        
+        MAKE_STD_ZVAL(retval);
+        ZVAL_STRING(retval, ctx->id ? ctx->id : "Unknown", 1);
+        Z_SET_REFCOUNT_P(retval, 0);
+        
+    }
+
+    if (member == &tmp_member) {
+        zval_dtor(member);
+    }
+
+    return retval;
+}
+
+static HashTable *get_properties(zval *object TSRMLS_DC) /* {{{ */
+{
+    HashTable *props;
+    zval *zv;
+    
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
+        zend_object_store_get_object(object TSRMLS_CC);
+    
+    
+    props = zend_std_get_properties(object TSRMLS_CC);
+    
+    MAKE_STD_ZVAL(zv);
+    ZVAL_STRING(zv, ctx->id ? ctx->id : "Unknown", 1);
+    zend_hash_update(props, "id", sizeof("id"), &zv, sizeof(zval), NULL);
+    
+    return props;
 }
 
 unsigned long parse_key(const char *key)
@@ -482,16 +532,19 @@ static void on_connection_close(struct evhttp_connection *evcon, void *arg)
     zval *websocket_ctx = (zval *)arg;
     struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx *)
         zend_object_store_get_object(websocket_ctx TSRMLS_CC);
-    zval *func, retval;
+    zval *func, retval, *args[1];
     MAKE_STD_ZVAL(func);
     ZVAL_STRING(func, "onClose", 1);
-    if (call_user_function(EG(function_table), &ctx->zroute, func, &retval, 0, NULL TSRMLS_CC) == SUCCESS) {
+    args[0] = websocket_ctx;
+    Z_ADDREF_P(args[0]);
+    if (call_user_function(EG(function_table), &ctx->zroute, func, &retval, 1, args TSRMLS_CC) == SUCCESS) {
         zval_dtor(&retval);
     }
     if(EG(exception)) {
         // ignore exceptions within WebSocketRoute::onClose()
         zend_clear_exception(TSRMLS_C);
     }
+    Z_DELREF_P(args[0]);
     zval_ptr_dtor(&func);
     ctx->evcon = NULL;
     ctx->req = NULL;
@@ -570,8 +623,8 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
     Z_SET_REFCOUNT_P(websocket_ctx, 1);
     struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx *)
         zend_object_store_get_object(websocket_ctx TSRMLS_CC);
-    ctx->ident = emalloc(33);
-    php_spl_object_hash(websocket_ctx, ctx->ident TSRMLS_CC); 
+    ctx->id = emalloc(33);
+    php_spl_object_hash(websocket_ctx, ctx->id TSRMLS_CC); 
     
     MAKE_STD_ZVAL(callback);
     ZVAL_STRING(callback, "onHandshake", 1);
@@ -903,6 +956,8 @@ static void server_websocket_init(TSRMLS_D)
     
     memcpy(&server_websocket_ctx_obj_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
     server_websocket_ctx_obj_handlers.clone_obj = NULL;
+    server_websocket_ctx_obj_handlers.read_property = read_property;
+    server_websocket_ctx_obj_handlers.get_properties = get_properties;
 
     // class \Can\Server\WebSocketRoute extends \Can\Server\Route
     PHP_CAN_REGISTER_SUBCLASS(

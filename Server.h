@@ -182,7 +182,7 @@ struct php_can_websocket_ctx {
     zend_object std;
     zval refhandle;
     long timeout;
-    char *ident;
+    char *id;
     struct evhttp_request *req;
     struct evhttp_connection *evcon;
     zval *zroute;
