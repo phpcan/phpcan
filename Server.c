@@ -49,7 +49,7 @@ static zend_object_value server_ctor(zend_class_entry *ce TSRMLS_DC)
     server->logfile = NULL;
     server->router = NULL;
     zend_object_std_init(&server->std, ce TSRMLS_CC);
-
+    object_properties_init(&server->std, ce);
     retval.handle = zend_objects_store_put(server,
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_dtor,
