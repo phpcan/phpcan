@@ -93,7 +93,7 @@ static PHP_METHOD(CanServerRoute, __construct)
         return;
     }
 
-    struct php_can_server_route *request = (struct php_can_server_route*)
+    struct php_can_server_route *route = (struct php_can_server_route*)
         zend_object_store_get_object(getThis() TSRMLS_CC);
 
     if (handler) {
@@ -111,17 +111,17 @@ static PHP_METHOD(CanServerRoute, __construct)
         efree(func_name);
         
         zval_add_ref(&handler);
-        request->handler = handler;
+        route->handler = handler;
     } else {
-        MAKE_STD_ZVAL(request->handler);
-        array_init(request->handler);
-        add_next_index_zval(request->handler, getThis());
-        add_next_index_string(request->handler, "handleRequest", 1);
+        MAKE_STD_ZVAL(route->handler);
+        array_init(route->handler);
+        add_next_index_zval(route->handler, getThis());
+        add_next_index_string(route->handler, "handleRequest", 1);
     }
     
     long meth = methods != NULL ? Z_LVAL_P(methods) : PHP_CAN_SERVER_ROUTE_METHOD_GET;
     if (meth && meth & PHP_CAN_SERVER_ROUTE_METHOD_ALL) {
-        request->methods = meth;
+        route->methods = meth;
     } else {
         php_can_throw_exception(
             ce_can_InvalidParametersException TSRMLS_CC,
@@ -129,14 +129,14 @@ static PHP_METHOD(CanServerRoute, __construct)
         );
     }
     
-    MAKE_STD_ZVAL(request->casts);
-    array_init(request->casts);
+    MAKE_STD_ZVAL(route->casts);
+    array_init(route->casts);
     
     if (FAILURE != php_can_strpos(Z_STRVAL_P(uri), "<", 0) && FAILURE != php_can_strpos(Z_STRVAL_P(uri), ">", 0)) {
         int i;
         for (i = 0; i < Z_STRLEN_P(uri); i++) {
             if (Z_STRVAL_P(uri)[i] != '<') {
-                spprintf(&request->regexp, 0, "%s%c", request->regexp == NULL ? "" : request->regexp, Z_STRVAL_P(uri)[i]);
+                spprintf(&route->regexp, 0, "%s%c", route->regexp == NULL ? "" : route->regexp, Z_STRVAL_P(uri)[i]);
             } else {
                 int y = php_can_strpos(Z_STRVAL_P(uri), ">", i);
                 char *name = php_can_substr(Z_STRVAL_P(uri), i + 1, y - (i + 1));
@@ -145,33 +145,33 @@ static PHP_METHOD(CanServerRoute, __construct)
                     char *var = php_can_substr(name, 0, pos);
                     char *filter = php_can_substr(name, pos + 1, strlen(name) - (pos + 1));
                     if (strcmp(filter, "int") == 0) {
-                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, "-?[0-9]+");
-                        add_assoc_long(request->casts, var, IS_LONG);
+                        spprintf(&route->regexp, 0, "%s(?<%s>%s)", route->regexp, var, "-?[0-9]+");
+                        add_assoc_long(route->casts, var, IS_LONG);
                     } else if (0 == strcmp(filter, "float")) {
-                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, "-?[0-9.]+");
-                        add_assoc_long(request->casts, var, IS_DOUBLE);
+                        spprintf(&route->regexp, 0, "%s(?<%s>%s)", route->regexp, var, "-?[0-9.]+");
+                        add_assoc_long(route->casts, var, IS_DOUBLE);
                     } else if (0 == strcmp(filter, "path")) {
-                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, ".+?");
-                        add_assoc_long(request->casts, var, IS_PATH);
+                        spprintf(&route->regexp, 0, "%s(?<%s>%s)", route->regexp, var, ".+?");
+                        add_assoc_long(route->casts, var, IS_PATH);
                     } else if (0 == (pos = php_can_strpos(filter, "re:", 0))) {
                         char *reg = php_can_substr(filter, pos + 3, strlen(filter) - (pos + 3));
-                        spprintf(&request->regexp, 0, "%s(?<%s>%s)", request->regexp, var, reg);
+                        spprintf(&route->regexp, 0, "%s(?<%s>%s)", route->regexp, var, reg);
                         efree(reg);
                     }
                     efree(filter);
                     efree(var);
                     
                 } else {
-                    spprintf(&request->regexp, 0, "%s(?<%s>[^/]+)", request->regexp, name);
+                    spprintf(&route->regexp, 0, "%s(?<%s>[^/]+)", route->regexp, name);
                 }
                 efree(name);
                 i = y;
             }
         }
-        spprintf(&request->regexp, 0, "\1^%s$\1", request->regexp);
+        spprintf(&route->regexp, 0, "\1^%s$\1", route->regexp);
     }
     
-    request->route = estrndup(Z_STRVAL_P(uri), Z_STRLEN_P(uri));
+    route->route = estrndup(Z_STRVAL_P(uri), Z_STRLEN_P(uri));
 
 }
 
