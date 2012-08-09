@@ -414,99 +414,82 @@ Here is an example how to implement a HTTP service that servs static content.
 WebSockets
 ----------
 
+PHP Can support server-side implementation of the WebSockets protocols hixie-76 and RFC-6455.
+Here is an example of the simple Echo WebSocket application:
+
 .. code-block:: php
 
     <?php
 
     use \Can\Server;
     use \Can\Server\Router;
+    use \Can\Server\Route;
     use \Can\Server\WebSocketRoute;
-    use \Can\Server\WebSocketContext;
+    use \Can\Server\WebSocketConnection;
     use \Can\Server\Request;
 
-    class EchoWebSocketRoute extends WebSocketRoute
-    {
-        /**
-         * This method will be invoked before WebSocket HTTP handshake will be send to the client.
-         * Use this method to examine incoming request, request arguments, add additional response
-         * headers etc.
-         */
-        public function onHandshake(Request $request, array $args, WebSocketContext $context)
-        {
-            // Set WebSocket timeout to 5 minutes
-            $context->setTimeout(300);
-        }
-
-        /**
-         * This method will be invoked on incoming WebSocket message. The return value of this
-         * method will be send to the client as response message. The $context instance represents
-         * the WebSocket connection which can be closed by calling $context->close() method.
-         */
-        public function onMessage($message, WebSocketContext $context)
-        {
-            return 'Echo: ' . $message;
-        }
-
-        /**
-         * This method will be invoked on closing of the WebSocket connection by the server or by the client.
-         */
-        public function onClose()
-        {
-
-        }
-    }
-    
     $server = new Server('127.0.0.1', 4567, 
         "time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error\n");
     $server->start(
         new Router(
             array(
-                new EchoWebSocketRoute('/echo'),
+                new WebSocketRoute(
+                    '/echo',
+                    function ($message, $conn) {
+                        $conn->send('Yes, ' . $message);
+                    }
+                ),
                 new Route(
                     '/',
-                    function() {
+                    function($request) {
                         return '
     <!DOCTYPE html>
-    <meta charset="utf-8" />
-    <title>WebSocket Test</title>
     <script language="javascript" type="text/javascript">
-    var wsUri = "ws://localhost:4567/echo";
-    var output;
-    function init() { output = document.getElementById("output"); testWebSocket(); }
+    var wsUri = "ws://'. $request->requestHeaders['Host'] .'/echo";
+    var op,bc,bs,sm;
+    function init()
+    {   op = document.getElementById("op");
+        bc = document.getElementById("bc");
+        bs = document.getElementById("bs");
+        sm = document.getElementById("sm");
+        testWebSocket();
+    }
     function testWebSocket()
-    {
-        websocket = new WebSocket(wsUri);
-        websocket.onopen = function(evt) { onOpen(evt) };
-        websocket.onclose = function(evt) { onClose(evt) };
-        websocket.onmessage = function(evt) { onMessage(evt) };
-        websocket.onerror = function(evt) { onError(evt) };
+    {   websocket = new WebSocket(wsUri);
+        websocket.onopen = function(evt)  { writeToScreen("CONNECTED");bc.innerHTML = "Disconnect";};
+        websocket.onclose = function(evt) { writeToScreen("DISCONNECTED");bc.innerHTML = "Connect";};
+        websocket.onmessage = function(evt) { writeToScreen("    RESPONSE: " + evt.data); };
+        websocket.onerror = function(evt) { writeToScreen("ERROR: " + evt.data); };
     }
-    function onOpen(evt) { writeToScreen("CONNECTED"); }
-    function onClose(evt) { writeToScreen("DISCONNECTED" + (typeof evt.data !="undefined" ? ": " + evt.data : "")); }
-    function onMessage(evt) { writeToScreen("<span style=\"color: blue;\">RESPONSE: " + evt.data+"</span>"); }
-    function onError(evt) { writeToScreen("<span style=\"color: red;\">ERROR:</span> " + evt.data); }
-    function doSend(message) { writeToScreen("SENT: " + message); websocket.send(message); }
-    function writeToScreen(message) {
-        var pre = document.createElement("p");
-        pre.style.wordWrap = "break-word";
-        pre.innerHTML = message;
-        output.appendChild(pre);
+    function doSend(message)
+    {   if (websocket.readyState != 1) {writeToScreen("NOT CONNECTED");} 
+        else {writeToScreen("SENT: " + message); websocket.send(message); }}
+    function writeToScreen(message)
+    {   var pre = document.createElement("span");
+        pre.innerHTML = message + "\n";
+        op.appendChild(pre);
     }
+    function closeOrConnect() {if (websocket.readyState != 1) testWebSocket();else websocket.close();}
     window.addEventListener("load", init, false);
     </script>
-    <h2>WebSocket Test</h2>
-    <input id="sendMessage" size="35" value="I love WebSocket">
-    <button id="send" onclick="javascript:doSend(document.getElementById(\'sendMessage\').value);">Send</button>
-    <button id="send" onclick="javascript:websocket.close();">Close</button>
-    <div id="output"></div>
+    <input id="sm" size="35" value="I love WebSocket">
+    <button id="bs" onclick="javascript:doSend(sm.value);">Send</button>
+    <button id="bc" onclick="javascript:closeOrConnect();">Disconnect</button>
+    <pre id="op"></pre>
     </html>';
                     }
                 )
             )
         )
-    );
-    
+    );    
     ?>
+
+In this example the class WebSocketRoute binds an ``onMessage`` handler to an URL path. WebSockeRoute accepts only 
+a valid WebSocket requests and handles transparently handshake and protocol switch. The handler will be invoked 
+every time a client send a message, the first parameter is a string message and the second parameter is an instacne
+of the WebSocketConnection class, which implements :php:meth:`WebSocketConnection::send` to send a response message 
+on this connection and :php:meth:`WebSocketConnection::close` to close the connection.
+
    
     
 To be continued...
