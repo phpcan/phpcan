@@ -45,6 +45,7 @@ static zend_object_value server_request_ctor(zend_class_entry *ce TSRMLS_DC)
 
     request = ecalloc(1, sizeof(*request));
     zend_object_std_init(&request->std, ce TSRMLS_CC);
+    object_properties_init(&request->std, ce);
     request->cookies = NULL;
     request->get = NULL;
     request->post = NULL;

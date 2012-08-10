@@ -58,6 +58,7 @@ if test "$PHP_CAN" != "no"; then
     Server.c \
     Server/Router.c \
     Server/Route.c \
+    Server/WebSocketRoute.c \
     Server/Request.c \
     Server/multipart.c \
     , $ext_shared)

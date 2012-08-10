@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Simple WebSockets chat</title>
+        <style>
+        * { font-family:tahoma; font-size:12px; padding:0px; margin:0px; }
+        p { line-height:18px; }
+        div { position:absolute; margin-left:20px; margin-right:auto;}
+        #content { width:500px; height:300px; padding:5px; background:#ddd; border-radius:5px;
+                   border:1px solid #CCC; margin-top:10px; overflow:auto;  }
+        #members { left:520px; width:200px; height:300px; padding:5px; background:#ddd; border-radius:5px;
+                   border:1px solid #CCC; margin-top:10px; }
+        #control { top:308px; width:730px; padding:5px; margin-top:10px;}
+        #label   { width:120px; display:block; float:left; margin-top:15px; }
+        #input   { top:308px; border-radius:2px; border:1px solid #ccc;
+                   margin-top:10px; padding:5px; width:500px; }
+        #button  {width:85px;}
+        </style>
+    </head>
+    <body>
+        <div id="content"></div>
+        <div id="members"></div>
+        <div id="control">
+          <span id="label">Choose your name:</span>
+          <input type="text" id="input" value="Guest" />
+          <button type="button" id="button">Connect</button>
+        </div>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+        <script src="chat.js"></script>
+    </body>
+</html>
+
