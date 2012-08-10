@@ -494,9 +494,11 @@ on this connection and :php:meth:`WebSocketConnection::close` to close the conne
 
 WebSockets Chat example
 -----------------------
+
+.. _tutorial-websockets-chat:
    
     More advanced WebSocket Chat example can be found within repository in examples directory:
-    https://github.com/phpcan/phpcan/examples/WebSocketChat
+    https://github.com/phpcan/phpcan/tree/master/examples/WebSocketChat
     
 To be continued...
 ------------------
