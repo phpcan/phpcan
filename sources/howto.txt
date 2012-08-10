@@ -414,6 +414,8 @@ Here is an example how to implement a HTTP service that servs static content.
 WebSockets
 ----------
 
+.. _tutorial-websockets:
+
 PHP Can support server-side implementation of the WebSockets protocols hixie-76 and RFC-6455.
 Here is an example of the simple Echo WebSocket application:
 
@@ -434,7 +436,7 @@ Here is an example of the simple Echo WebSocket application:
         new Router(
             array(
                 new WebSocketRoute(
-                    '/chat',
+                    '/echo',
                     function ($message, $conn) {
                         $conn->send('Yes, ' . $message);
                     }
@@ -445,7 +447,7 @@ Here is an example of the simple Echo WebSocket application:
                         return '
     <!DOCTYPE html>
     <script language="javascript" type="text/javascript">
-    var wsUri = "ws://'. $request->requestHeaders['Host'] .'/chat";
+    var wsUri = "ws://'. $request->requestHeaders['Host'] .'/echo";
     var op,bc,bs,sm;
     function init()
     {   op = document.getElementById("op");
@@ -490,7 +492,11 @@ every time a client send a message, the first parameter is a string message and 
 of the WebSocketConnection class, which implements :php:meth:`WebSocketConnection::send` to send a response message 
 on this connection and :php:meth:`WebSocketConnection::close` to close the connection.
 
+WebSockets Chat example
+-----------------------
    
+    More advanced WebSocket Chat example can be found within repository in examples directory:
+    https://github.com/phpcan/phpcan/examples/WebSocketChat
     
 To be continued...
 ------------------

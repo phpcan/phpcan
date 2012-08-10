@@ -492,7 +492,11 @@ every time a client send a message, the first parameter is a string message and 
 of the WebSocketConnection class, which implements :php:meth:`WebSocketConnection::send` to send a response message 
 on this connection and :php:meth:`WebSocketConnection::close` to close the connection.
 
+WebSockets Chat example
+-----------------------
    
+    More advanced WebSocket Chat example can be found within repository in examples directory:
+    https://github.com/phpcan/phpcan/examples/WebSocketChat
     
 To be continued...
 ------------------
