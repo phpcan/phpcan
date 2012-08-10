@@ -428,24 +428,28 @@ static void request_handler(struct evhttp_request *req, void *arg)
             // we search through route_methods to determine what HTTP response we send back
             zval **item;
             zend_bool found = 0;
-            PHP_CAN_FOREACH(router->route_methods, item) {
-                if (strkey[0] == '\1') {
-                    pcre_cache_entry *pce;
-                    // TODO: cache compiled pce
-                    if (NULL != (pce = pcre_get_compiled_regex_cache(strkey, strlen(strkey) TSRMLS_CC))) {
-                        zval *subpats = NULL;
-                        zval *res = NULL;
-                        ALLOC_INIT_ZVAL(subpats);
-                        ALLOC_INIT_ZVAL(res);
-                        php_pcre_match_impl(pce, (char *)uri_path, strlen(uri_path), res, subpats, 0, 0, 0, 0 TSRMLS_CC);
-                        if(Z_LVAL_P(res) > 0) {
-                            // route exists, so we send 405
-                            found = 1;
-                        }
-                        zval_ptr_dtor(&subpats);
-                        zval_ptr_dtor(&res);
-                        if (found) {
-                            break;
+            if (FAILURE != zend_hash_find(Z_ARRVAL_P(router->route_methods), uri_path, strlen(uri_path) + 1, (void **)&item)) {
+                found = 1;
+            } else {
+                PHP_CAN_FOREACH(router->route_methods, item) {
+                    if (strkey[0] == '\1') {
+                        pcre_cache_entry *pce;
+                        // TODO: cache compiled pce
+                        if (NULL != (pce = pcre_get_compiled_regex_cache(strkey, strlen(strkey) TSRMLS_CC))) {
+                            zval *subpats = NULL;
+                            zval *res = NULL;
+                            ALLOC_INIT_ZVAL(subpats);
+                            ALLOC_INIT_ZVAL(res);
+                            php_pcre_match_impl(pce, (char *)uri_path, strlen(uri_path), res, subpats, 0, 0, 0, 0 TSRMLS_CC);
+                            if(Z_LVAL_P(res) > 0) {
+                                // route exists, so we send 405
+                                found = 1;
+                            }
+                            zval_ptr_dtor(&subpats);
+                            zval_ptr_dtor(&res);
+                            if (found) {
+                                break;
+                            }
                         }
                     }
                 }
