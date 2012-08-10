@@ -15,5 +15,7 @@ This project is inspired by Bottle (Python Web Framework: http://bottlepy.org).
     api/route
     api/router
     api/request
+    api/websocket_route
+    api/websocket_connection
 
 
