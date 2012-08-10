@@ -409,7 +409,94 @@ Here is an example how to implement a HTTP service that servs static content.
     );
     
     ?>
+
+
+WebSockets
+----------
+
+.. _tutorial-websockets:
+
+PHP Can support server-side implementation of the WebSockets protocols hixie-76 and RFC-6455.
+Here is an example of the simple Echo WebSocket application:
+
+.. code-block:: php
+
+    <?php
+
+    use \Can\Server;
+    use \Can\Server\Router;
+    use \Can\Server\Route;
+    use \Can\Server\WebSocketRoute;
+    use \Can\Server\WebSocketConnection;
+    use \Can\Server\Request;
+
+    $server = new Server('127.0.0.1', 4567, 
+        "time c-ip cs-method cs-uri sc-status sc-bytes time-taken x-memusage x-error\n");
+    $server->start(
+        new Router(
+            array(
+                new WebSocketRoute(
+                    '/echo',
+                    function ($message, $conn) {
+                        $conn->send('Yes, ' . $message);
+                    }
+                ),
+                new Route(
+                    '/',
+                    function($request) {
+                        return '
+    <!DOCTYPE html>
+    <script language="javascript" type="text/javascript">
+    var wsUri = "ws://'. $request->requestHeaders['Host'] .'/echo";
+    var op,bc,bs,sm;
+    function init()
+    {   op = document.getElementById("op");
+        bc = document.getElementById("bc");
+        bs = document.getElementById("bs");
+        sm = document.getElementById("sm");
+        testWebSocket();
+    }
+    function testWebSocket()
+    {   websocket = new WebSocket(wsUri);
+        websocket.onopen = function(evt)  { writeToScreen("CONNECTED");bc.innerHTML = "Disconnect";};
+        websocket.onclose = function(evt) { writeToScreen("DISCONNECTED");bc.innerHTML = "Connect";};
+        websocket.onmessage = function(evt) { writeToScreen("    RESPONSE: " + evt.data); };
+        websocket.onerror = function(evt) { writeToScreen("ERROR: " + evt.data); };
+    }
+    function doSend(message)
+    {   if (websocket.readyState != 1) {writeToScreen("NOT CONNECTED");} 
+        else {writeToScreen("SENT: " + message); websocket.send(message); }}
+    function writeToScreen(message)
+    {   var pre = document.createElement("span");
+        pre.innerHTML = message + "\n";
+        op.appendChild(pre);
+    }
+    function closeOrConnect() {if (websocket.readyState != 1) testWebSocket();else websocket.close();}
+    window.addEventListener("load", init, false);
+    </script>
+    <input id="sm" size="35" value="I love WebSocket">
+    <button id="bs" onclick="javascript:doSend(sm.value);">Send</button>
+    <button id="bc" onclick="javascript:closeOrConnect();">Disconnect</button>
+    <pre id="op"></pre>
+    </html>';
+                    }
+                )
+            )
+        )
+    );    
+    ?>
+
+In this example the class WebSocketRoute binds an ``onMessage`` handler to an URL path. WebSockeRoute accepts only 
+a valid WebSocket requests and handles transparently handshake and protocol switch. The handler will be invoked 
+every time a client send a message, the first parameter is a string message and the second parameter is an instacne
+of the WebSocketConnection class, which implements :php:meth:`WebSocketConnection::send` to send a response message 
+on this connection and :php:meth:`WebSocketConnection::close` to close the connection.
+
+WebSockets Chat example
+-----------------------
    
+    More advanced WebSocket Chat example can be found within repository in examples directory:
+    https://github.com/phpcan/phpcan/examples/WebSocketChat
     
 To be continued...
 ------------------
