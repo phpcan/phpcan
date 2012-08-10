@@ -275,6 +275,37 @@ static PHP_METHOD(CanServerRoute, getMethod)
 }
 
 /**
+ * Set HTTP method this route applies to
+ */
+static PHP_METHOD(CanServerRoute, setMethod)
+{
+    zval *methods = NULL;
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "z", &methods) || Z_TYPE_P(methods) != IS_LONG) {
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "%s%s%s(int $method)",
+            class_name, space, get_active_function_name(TSRMLS_C)
+        );
+        return;
+    }
+    
+    struct php_can_server_route *route = (struct php_can_server_route*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    long meth = methods != NULL ? Z_LVAL_P(methods) : PHP_CAN_SERVER_ROUTE_METHOD_GET;
+    if (meth && meth & PHP_CAN_SERVER_ROUTE_METHOD_ALL) {
+        route->methods = meth;
+    } else {
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "Unexpected method"
+        );
+    }
+}
+
+/**
  * Default request handler
  */
 static PHP_METHOD(CanServerRoute, handleRequest)
@@ -285,12 +316,11 @@ static PHP_METHOD(CanServerRoute, handleRequest)
     );
 }
 
-
-
 static zend_function_entry server_route_methods[] = {
     PHP_ME(CanServerRoute, __construct,   NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, getUri,        NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, getMethod,     NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerRoute, setMethod,     NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
     PHP_ME(CanServerRoute, handleRequest, NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
