@@ -171,6 +171,7 @@ test('$r->sendResponseStart(200);$r->sendResponseChunk("");', "");
 test('$r->sendResponseStart(200);$r->sendResponseChunk("foobar");$r->sendResponseEnd();', "foobar");
 test('return array(1,2,3,4);', "");
 test('$r->addResponseHeader("Content-Type","application/json");return array(1,2,3,4);', "[1,2,3,4]");
+test('class a implements JsonSerializable {public function jsonSerialize() {return array(1,2,3,4);}} return new a;', "[1,2,3,4]");
 test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");return $r->sendFile("test.txt", __DIR__);', "qwertzuiopasdfghjklyxcvbnm");
 test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");return $r->sendFile("test.txt", __DIR__);', "wertz", "GET", null, "Range: bytes=1-5\r\n");
 test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");return $r->sendFile("test.txt", __DIR__);', "xcvbnm", "GET", null, "Range: bytes=-6\r\n");
@@ -178,6 +179,7 @@ test('file_put_contents(__DIR__ . "/test.txt", "qwertzuiopasdfghjklyxcvbnm");ret
 test('unlink(__DIR__ . "/test.txt");"";', "");
 ?>
 --EXPECT--
+bool(true)
 bool(true)
 bool(true)
 bool(true)

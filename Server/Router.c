@@ -46,6 +46,7 @@ static zend_object_value server_router_ctor(zend_class_entry *ce TSRMLS_DC)
 
     router = ecalloc(1, sizeof(*router));
     zend_object_std_init(&router->std, ce TSRMLS_CC);
+    object_properties_init(&router->std, ce);
     router->pos = -1;
     router->routes = NULL;
     router->method_routes = NULL;
@@ -147,8 +148,8 @@ static PHP_METHOD(CanServerRouter, __construct)
     if (routes != NULL) {
         zval **zroute;
         PHP_CAN_FOREACH(routes, zroute) {
-
-            if (Z_TYPE_PP(zroute) != IS_OBJECT || Z_OBJCE_PP(zroute) != ce_can_server_route) {
+            
+            if (Z_TYPE_PP(zroute) != IS_OBJECT || !instanceof_function(Z_OBJCE_PP(zroute), ce_can_server_route TSRMLS_CC)) {
                 php_can_throw_exception(
                     ce_can_InvalidParametersException TSRMLS_CC,
                     "Route must be instance of '%s'", ce_can_server_route->name
