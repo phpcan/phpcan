@@ -559,6 +559,89 @@ static void on_connection_close(struct evhttp_connection *evcon, void *arg)
     zval_ptr_dtor(&websocket_ctx);
 }
 
+static int
+invokeBeforeHandshake(zval *zroute, zval *zrequest, zval *params, zval *websocket_ctx TSRMLS_DC)
+{
+    struct php_can_server_request *request = (struct php_can_server_request *)
+        zend_object_store_get_object(zrequest TSRMLS_CC);
+    
+    zval *callback, retval, *args[3];
+
+    MAKE_STD_ZVAL(callback);
+    ZVAL_STRING(callback, "beforeHandshake", 1);
+
+    args[0] = zrequest;
+    args[1] = params;
+    args[2] = websocket_ctx;
+
+    Z_ADDREF_P(args[0]);
+    Z_ADDREF_P(args[1]);
+    Z_ADDREF_P(args[2]);
+
+    if (call_user_function(EG(function_table), &zroute, callback, &retval, 3, args TSRMLS_CC) == SUCCESS) {
+        zval_dtor(&retval);
+    }
+    Z_DELREF_P(args[0]);
+    Z_DELREF_P(args[1]);
+    Z_DELREF_P(args[2]);
+
+    zval_ptr_dtor(&callback);
+
+    if(EG(exception)) {
+
+        if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_can_HTTPError TSRMLS_CC)) {
+
+            zval *code = NULL, *error = NULL;
+            code  = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "code", sizeof("code")-1, 1 TSRMLS_CC);
+            error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
+            request->response_code = code ? Z_LVAL_P(code) : 500;
+            spprintf(&request->error, 0, "%s", error ? Z_STRVAL_P(error) : "Unknown");
+
+        } else {
+            zval *file = NULL, *line = NULL, *error = NULL;
+            file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
+            line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
+            error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
+            request->response_code = 500;
+            spprintf(&request->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d \"%s\"", 
+                    Z_OBJCE_P(EG(exception))->name,
+                    file ? Z_STRVAL_P(file) : NULL,
+                    line ? (int)Z_LVAL_P(line) : 0,
+                    error ? Z_STRVAL_P(error) : ""
+            );
+        }
+        zend_clear_exception(TSRMLS_C);
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
+static int
+invokeAfterHandshake(zval *zroute, zval *websocket_ctx TSRMLS_DC)
+{
+    zval *callback, retval, *args[1];
+
+    MAKE_STD_ZVAL(callback);
+    ZVAL_STRING(callback, "afterHandshake", 1);
+
+    args[0] = websocket_ctx;
+
+    Z_ADDREF_P(args[0]);
+
+    if (call_user_function(EG(function_table), &zroute, callback, &retval, 1, args TSRMLS_CC) == SUCCESS) {
+        zval_dtor(&retval);
+    }
+    Z_DELREF_P(args[0]);
+
+    zval_ptr_dtor(&callback);
+
+    if(EG(exception)) {
+        zend_clear_exception(TSRMLS_C);
+        return FAILURE;
+    }
+    return SUCCESS;
+}
+
 void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *params TSRMLS_DC)
 {
     struct php_can_server_request *request = (struct php_can_server_request *)
@@ -634,52 +717,7 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
     
     if (Z_OBJCE_P(zroute) != ce_can_server_websocket_route) {
 
-        zval *callback, retval, *args[3];
-
-        MAKE_STD_ZVAL(callback);
-        ZVAL_STRING(callback, "onHandshake", 1);
-
-        args[0] = zrequest;
-        args[1] = params;
-        args[2] = websocket_ctx;
-
-        Z_ADDREF_P(args[0]);
-        Z_ADDREF_P(args[1]);
-        Z_ADDREF_P(args[2]);
-
-        if (call_user_function(EG(function_table), &zroute, callback, &retval, 3, args TSRMLS_CC) == SUCCESS) {
-            zval_dtor(&retval);
-        }
-        Z_DELREF_P(args[0]);
-        Z_DELREF_P(args[1]);
-        Z_DELREF_P(args[2]);
-
-        zval_ptr_dtor(&callback);
-
-        if(EG(exception)) {
-
-            if (instanceof_function(Z_OBJCE_P(EG(exception)), ce_can_HTTPError TSRMLS_CC)) {
-
-                zval *code = NULL, *error = NULL;
-                code  = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "code", sizeof("code")-1, 1 TSRMLS_CC);
-                error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
-                request->response_code = code ? Z_LVAL_P(code) : 500;
-                spprintf(&request->error, 0, "%s", error ? Z_STRVAL_P(error) : "Unknown");
-
-            } else {
-                zval *file = NULL, *line = NULL, *error = NULL;
-                file = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "file", sizeof("file")-1, 1 TSRMLS_CC);
-                line = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "line", sizeof("line")-1, 1 TSRMLS_CC);
-                error = zend_read_property(Z_OBJCE_P(EG(exception)), EG(exception), "message", sizeof("message")-1, 1 TSRMLS_CC);
-                request->response_code = 500;
-                spprintf(&request->error, 0, "Uncaught exception '%s' within request handler thrown in %s on line %d \"%s\"", 
-                        Z_OBJCE_P(EG(exception))->name,
-                        file ? Z_STRVAL_P(file) : NULL,
-                        line ? (int)Z_LVAL_P(line) : 0,
-                        error ? Z_STRVAL_P(error) : ""
-                );
-            }
-            zend_clear_exception(TSRMLS_C);
+        if (FAILURE == invokeBeforeHandshake(zroute, zrequest, params, websocket_ctx TSRMLS_CC)) {
             return;
         }
     }
@@ -796,6 +834,23 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
     
     request->status = PHP_CAN_SERVER_RESPONSE_STATUS_SENT;
     
+    if (Z_OBJCE_P(zroute) != ce_can_server_websocket_route) {
+
+        if (FAILURE == invokeAfterHandshake(zroute, websocket_ctx TSRMLS_CC)) {
+            if (ctx->evcon != NULL) {
+                struct bufferevent *bufev = evhttp_connection_get_bufferevent(ctx->evcon);
+                size_t outlen = 0;
+                char *encoded = ctx->rfc6455 ? 
+                    encode_data(NULL, 0, 0, WS_FRAME_CLOSE, &outlen) :
+                    encode_data_hixie76(NULL, 0, WS_FRAME_CLOSE, &outlen);
+                bufferevent_disable(bufev, EV_READ);
+                bufferevent_enable(bufev, EV_WRITE);
+                bufferevent_write(bufev, encoded, outlen);
+                efree(encoded);
+            }
+        }
+    }
+    
 }
 
 /**
@@ -892,7 +947,7 @@ static PHP_METHOD(CanServerWebSocketRoute, __construct)
 }
 
 /**
- * Invoked on incoming clint handshake.
+ * Invoked on incoming clint handshake before protocol switch.
  * Override this method to check incoming request data 
  * or/and to inject additional response headers
  * @param Request instance
@@ -900,7 +955,18 @@ static PHP_METHOD(CanServerWebSocketRoute, __construct)
  * @param WebSocketConnection instance
  * @param array uri arguments
  */
-static PHP_METHOD(CanServerWebSocketRoute, onHandshake) {}
+static PHP_METHOD(CanServerWebSocketRoute, beforeHandshake) {}
+
+/**
+ * Invoked on incoming clint handshake after protocol switch.
+ * Override this method to check incoming request data 
+ * or/and to inject additional response headers
+ * @param Request instance
+ * @param array Uri arguments
+ * @param WebSocketConnection instance
+ * @param array uri arguments
+ */
+static PHP_METHOD(CanServerWebSocketRoute, afterHandshake) {}
 
 /**
  * Handle incoming messages
@@ -1011,10 +1077,11 @@ static PHP_METHOD(CanServerWebSocketContext, close)
 }
 
 static zend_function_entry server_websocket_route_methods[] = {
-    PHP_ME(CanServerWebSocketRoute, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerWebSocketRoute, onHandshake, NULL, ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerWebSocketRoute, onMessage,   NULL, ZEND_ACC_PUBLIC)
-    PHP_ME(CanServerWebSocketRoute, onClose,     NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketRoute, __construct,     NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketRoute, beforeHandshake, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketRoute, afterHandshake,  NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketRoute, onMessage,       NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketRoute, onClose,         NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
