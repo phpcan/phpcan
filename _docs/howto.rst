@@ -414,6 +414,8 @@ Here is an example how to implement a HTTP service that servs static content.
 WebSockets
 ----------
 
+.. _tutorial-websockets:
+
 PHP Can support server-side implementation of the WebSockets protocols hixie-76 and RFC-6455.
 Here is an example of the simple Echo WebSocket application:
 
