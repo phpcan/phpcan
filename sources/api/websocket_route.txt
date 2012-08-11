@@ -41,7 +41,7 @@ Example:
     
     ?>
 
-.. php:method:: beforeHandshake(\Can\Server\Request $request, array $args, \Can\Server\WebSocketConnection $conn)
+.. php:method:: beforeHandshake(Request $request, array $args, WebSocketConnection $conn)
 
     This method will be invoked before WebSocket handshake will be sent to the client. By default this method do
     nothing. You must extend WebSocketRoute class to override this method with your logic, e.g. examine Request 
@@ -49,6 +49,10 @@ Example:
     the connection by throwing :php:class:`HTTPError` exception. Although WebSocketConnection instance already
     exists the real WebSocket connection is not established yet, so it makes no sense to call WebSocketConnection::send()
     or WebSocketConnection::close() at this time.
+
+    :param :php:class:`Request` $request: Request instance.
+    :param array $args: associative arguments array with values of the wildcards defined within URI path.
+    :param :php:class:`WebSocketConnection` $conn: WebSocket connection associated with this request.
 
 Example:
   
@@ -88,6 +92,8 @@ Example:
     nothing. You must extend WebSocketRoute class to override this method with your logic. At this time
     the WebSocket connection already established, so you can send a message or close this connection.
 
+    :param :php:class:`WebSocketConnection` $conn: WebSocket connection.
+
 Example:
   
 .. code-block:: php
@@ -121,6 +127,9 @@ Example:
     This method will be invoked on incoming messages from WebSocket connection $conn. Use given
     WebSocketConnection to send a message to the client.
 
+    :param string $message: Incoming WebSocket message.
+    :param :php:class:`WebSocketConnection` $conn: WebSocket connection.
+
 Example:
   
 .. code-block:: php
@@ -148,4 +157,6 @@ Example:
 .. php:method:: onClose(\Can\Server\WebSocketConnection $conn)
 
     This method will be invoked if WebSocket connection $conn is closed. 
+
+    :param :php:class:`WebSocketConnection` $conn: WebSocket connection.
 
