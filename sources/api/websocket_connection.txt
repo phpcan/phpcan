@@ -11,9 +11,16 @@
    WebSocketConnection class used to communicate with the WebSocket client. This class is final and cannot be 
    instantiated manually.
 
+.. php:attr:: id
+
+    ``string`` Unique identifier of the connection
+
 .. php:method:: setTimeout($timeout)
 
     Set timeout for this connection in seconds.
+
+    :param int $timeout: Timeout in seconds.
+    :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
 
 Example:
   
@@ -46,6 +53,10 @@ Example:
 
     Send message to the client.
 
+    :param string $message: Message to send.
+    :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
+
 .. php:method:: close()
 
     Close this connection.
+

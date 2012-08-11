@@ -9,6 +9,9 @@ Installation
 
 .. code-block:: bash
 
+    $ wget --no-check-certificate https://github.com/phpcan/phpcan/tarball/master -O phpcan.tgz
+    $ tar xzvf phpcan.tgz
+    $ cd phpcan-phpcan-*
     $ /path/to/phpize
     $ ./configure --with-libevent=/path/to/libevent --with-php-config=/path/to/php-config
     $ make
@@ -437,13 +440,13 @@ Here is an example of the simple Echo WebSocket application:
             array(
                 new WebSocketRoute(
                     '/echo',
-                    function ($message, $conn) {
+                    function ($message, WebSocketConnection $conn) {
                         $conn->send('Yes, ' . $message);
                     }
                 ),
                 new Route(
                     '/',
-                    function($request) {
+                    function(Request $request) {
                         return '
     <!DOCTYPE html>
     <script language="javascript" type="text/javascript">

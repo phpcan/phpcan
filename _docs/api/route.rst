@@ -42,6 +42,36 @@ Example:
     
     ?>
 
+.. php:method:: handleRequest(Request $request, array $args)
+
+    Default request handler. Will be invoked if no request handler will be paased to the
+    constructor. By default this method throws :php:class:`InvalidCallbackException` with
+    "Not implementd" error message. You must extend the Route class and override this method
+    with request handler implementation.
+
+    :param :php:class:`Request` $request: Request instance.
+    :param array $args: associative arguments array with values of the wildcards defined within URI path.
+
+Example:
+  
+.. code-block:: php
+
+    <?php
+
+    use \Can\Server\Request;
+    use \Can\Server\Route;  
+    
+    class MyRoute extends Route
+    {
+        public function handleRequest(Request $request, array $args)
+        {
+            return 'Hello, ' . $args['name'] . '!';
+        }
+    }
+
+    $route = new MyRoute('/hello/<name>');
+    
+    ?>
     
 .. php:method:: getUri(bool $as_regexp = false)
 
@@ -59,6 +89,13 @@ Example:
     :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
     :returns: string
     
+.. php:method:: setMethod(int $methods)
+
+    Set HTTP method this route applies to.
+    
+    :param int $methods: HTTP request methods bitmask this route associated with.
+    :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
+
 .. php:method:: getHandler()
 
     Get request handler associated with this Route instance.
