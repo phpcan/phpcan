@@ -1021,7 +1021,7 @@ static PHP_METHOD(CanServerWebSocketContext, setTimeout)
 }
 
 /**
- * Set WebSocket timeout
+ * Append user-defined data to the connection
  *
  */
 static PHP_METHOD(CanServerWebSocketContext, setData)
@@ -1050,7 +1050,7 @@ static PHP_METHOD(CanServerWebSocketContext, setData)
 }
 
 /**
- * Get data associated with this connection
+ * Get previously appended user-defined data from the connection.
  *
  */
 static PHP_METHOD(CanServerWebSocketContext, getData)
