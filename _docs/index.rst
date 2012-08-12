@@ -4,10 +4,9 @@
 PHP Can Web Framework
 =====================
 
-PHP Can is a fast and simple web framework based on libevent (http://libevent.org) 
+PHP Can (https://github.com/phpcan/phpcan) is a fast and simple web framework based on libevent (http://libevent.org) 
 for writing a lightweight stateless or stateful PHP HTTP services and WebSocket applications.
-This project is inspired by Bottle (Python Web Framework: http://bottlepy.org). 
-Feel free fork / checkout PHP Can from https://github.com/phpcan/phpcan.
+This project is inspired by Bottle (Python Web Framework: http://bottlepy.org).
 
 .. toctree::
     :maxdepth: 3

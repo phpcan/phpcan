@@ -90,6 +90,51 @@
 <dd><p>Route class.</p>
 </dd></dl>
 
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_GET">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_GET</tt><a class="headerlink" href="#Can\Server\Route::METHOD_GET" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_POST">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_POST</tt><a class="headerlink" href="#Can\Server\Route::METHOD_POST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_PUT">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_PUT</tt><a class="headerlink" href="#Can\Server\Route::METHOD_PUT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_DELETE">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_DELETE</tt><a class="headerlink" href="#Can\Server\Route::METHOD_DELETE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_HEAD">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_HEAD</tt><a class="headerlink" href="#Can\Server\Route::METHOD_HEAD" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_OPTIONS">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_OPTIONS</tt><a class="headerlink" href="#Can\Server\Route::METHOD_OPTIONS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_TRACE">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_TRACE</tt><a class="headerlink" href="#Can\Server\Route::METHOD_TRACE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_CONNECT">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_CONNECT</tt><a class="headerlink" href="#Can\Server\Route::METHOD_CONNECT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="const">
+<dt id="Can\Server\Route::METHOD_PATCH">
+<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_PATCH</tt><a class="headerlink" href="#Can\Server\Route::METHOD_PATCH" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
 <dt id="Can\Server\Route::__construct">
 <tt class="descclassname">Can\Server\Route::</tt><tt class="descname">__construct</tt><big>(</big><em>string $uri</em>, <em>callable $handler</em>, <em>int $methods = Route::METHOD_GET</em><big>)</big><a class="headerlink" href="#Can\Server\Route::__construct" title="Permalink to this definition">¶</a></dt>
@@ -140,8 +185,21 @@ in which you will find values of the wildcards defined within you URI path. See 
 constructor. By default this method throws <tt class="xref php php-class docutils literal"><span class="pre">InvalidCallbackException</span></tt> with
 &#8220;Not implementd&#8221; error message. You must extend the Route class and override this method
 with request handler implementation.</p>
-<p>:param <a class="reference internal" href="request.html#Can\Server\Request" title="Can\Server\Request"><tt class="xref php php-class docutils literal"><span class="pre">Request</span></tt></a> $request: Request instance.
-:param array $args: associative arguments array with values of the wildcards defined within URI path.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$request</strong> (<em>Request</em>) &#8211; <a class="reference internal" href="request.html#Can\Server\Request" title="Can\Server\Request"><tt class="xref php php-class docutils literal"><span class="pre">Request</span></tt></a> instance.</li>
+<li><strong>$args</strong> (<em>array</em>) &#8211; associative arguments array with values of the wildcards defined within URI path.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">mixed. See <a class="reference internal" href="../howto.html#tutorial-output"><em>Generating content</em></a> for detailed information.</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <p>Example:</p>
@@ -222,7 +280,7 @@ with request handler implementation.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>$methods</strong> (<em>int</em>) &#8211; HTTP request methods bitmask this route associated with.</li>
+<li><strong>$methods</strong> (<em>int</em>) &#8211; HTTP request methods bitmask this route associated with,</li>
 </ul>
 </td>
 </tr>
@@ -248,51 +306,6 @@ with request handler implementation.</p>
 </tbody>
 </table>
 </dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_GET">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_GET</tt><a class="headerlink" href="#Can\Server\Route::METHOD_GET" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_POST">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_POST</tt><a class="headerlink" href="#Can\Server\Route::METHOD_POST" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_PUT">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_PUT</tt><a class="headerlink" href="#Can\Server\Route::METHOD_PUT" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_DELETE">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_DELETE</tt><a class="headerlink" href="#Can\Server\Route::METHOD_DELETE" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_HEAD">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_HEAD</tt><a class="headerlink" href="#Can\Server\Route::METHOD_HEAD" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_OPTIONS">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_OPTIONS</tt><a class="headerlink" href="#Can\Server\Route::METHOD_OPTIONS" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_TRACE">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_TRACE</tt><a class="headerlink" href="#Can\Server\Route::METHOD_TRACE" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_CONNECT">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_CONNECT</tt><a class="headerlink" href="#Can\Server\Route::METHOD_CONNECT" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="const">
-<dt id="Can\Server\Route::METHOD_PATCH">
-<em class="property">constant </em><tt class="descclassname">Can\Server\Route::</tt><tt class="descname">METHOD_PATCH</tt><a class="headerlink" href="#Can\Server\Route::METHOD_PATCH" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </div>
 
@@ -322,7 +335,7 @@ with request handler implementation.</p>
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on Aug 11, 2012.
+      Last updated on Aug 12, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

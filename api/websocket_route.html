@@ -52,10 +52,10 @@
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
   <p class="topless"><a href="route.html"
-                        title="previous chapter"><tt class="docutils literal"><span class="pre">\Can\Server\Route</span></tt> API</a></p>
+                        title="previous chapter"><tt class="docutils literal docutils literal docutils literal"><span class="pre">\Can\Server\Route</span></tt> API</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="websocket_connection.html"
-                        title="next chapter"><tt class="docutils literal docutils literal"><span class="pre">\Can\Server\WebSocketConnection</span></tt> API</a></p>
+                        title="next chapter"><tt class="docutils literal docutils literal docutils literal"><span class="pre">\Can\Server\WebSocketConnection</span></tt> API</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../sources/api/websocket_route.txt"
@@ -112,7 +112,7 @@
 </tbody>
 </table>
 <p>The onMessage handler must accepting <tt class="docutils literal"><span class="pre">string</span></tt> message as first parameter and <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a> instance as second parameter
-which you can use to communicate with the WebSocket client. See <em class="xref std std-ref">tutorial-websockets</em> for detailed information.</p>
+which you can use to communicate with the WebSocket client. See <a class="reference internal" href="../howto.html#tutorial-websockets"><em>WebSockets</em></a> for detailed information.</p>
 </dd></dl>
 
 <p>Example:</p>
@@ -141,9 +141,19 @@ headers or values of the wildcards defined within you URI path, add additional r
 the connection by throwing <tt class="xref php php-class docutils literal"><span class="pre">HTTPError</span></tt> exception. Although WebSocketConnection instance already
 exists the real WebSocket connection is not established yet, so it makes no sense to call WebSocketConnection::send()
 or WebSocketConnection::close() at this time.</p>
-<p>:param <a class="reference internal" href="request.html#Can\Server\Request" title="Can\Server\Request"><tt class="xref php php-class docutils literal"><span class="pre">Request</span></tt></a> $request: Request instance.
-:param array $args: associative arguments array with values of the wildcards defined within URI path.
-:param <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a> $conn: WebSocket connection associated with this request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>$request</strong> (<em>Request</em>) &#8211; <a class="reference internal" href="request.html#Can\Server\Request" title="Can\Server\Request"><tt class="xref php php-class docutils literal"><span class="pre">Request</span></tt></a> instance.</li>
+<li><strong>$args</strong> (<em>array</em>) &#8211; associative arguments array with values of the wildcards defined within URI path.</li>
+<li><strong>$conn</strong> (<em>WebSocketConnection</em>) &#8211; Instance of <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a>, WebSocket connection associated with this request.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <p>Example:</p>
@@ -178,11 +188,21 @@ or WebSocketConnection::close() at this time.</p>
 </div>
 <dl class="method">
 <dt id="Can\Server\WebSocketRoute::afterHandshake">
-<tt class="descclassname">Can\Server\WebSocketRoute::</tt><tt class="descname">afterHandshake</tt><big>(</big><em>CanServerWebSocketConnection $conn</em><big>)</big><a class="headerlink" href="#Can\Server\WebSocketRoute::afterHandshake" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Can\Server\WebSocketRoute::</tt><tt class="descname">afterHandshake</tt><big>(</big><em>WebSocketConnection $conn</em><big>)</big><a class="headerlink" href="#Can\Server\WebSocketRoute::afterHandshake" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method will be invoked after WebSocket handshake sent to the client. By default this method do
 nothing. You must extend WebSocketRoute class to override this method with your logic. At this time
 the WebSocket connection already established, so you can send a message or close this connection.</p>
-<p>:param <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a> $conn: WebSocket connection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>$conn</strong> (<em>WebSocketConnection</em>) &#8211; Instance of <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a>, WebSocket connection.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <p>Example:</p>
@@ -213,7 +233,7 @@ the WebSocket connection already established, so you can send a message or close
 </div>
 <dl class="method">
 <dt id="Can\Server\WebSocketRoute::onMessage">
-<tt class="descclassname">Can\Server\WebSocketRoute::</tt><tt class="descname">onMessage</tt><big>(</big><em>$message</em>, <em>CanServerWebSocketConnection $conn</em><big>)</big><a class="headerlink" href="#Can\Server\WebSocketRoute::onMessage" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">Can\Server\WebSocketRoute::</tt><tt class="descname">onMessage</tt><big>(</big><em>$message</em>, <em>WebSocketConnection $conn</em><big>)</big><a class="headerlink" href="#Can\Server\WebSocketRoute::onMessage" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method will be invoked on incoming messages from WebSocket connection $conn. Use given
 WebSocketConnection to send a message to the client.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -222,12 +242,12 @@ WebSocketConnection to send a message to the client.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>$message</strong> (<em>string</em>) &#8211; Incoming WebSocket message.</li>
+<li><strong>$conn</strong> (<em>WebSocketConnection</em>) &#8211; Instance of <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a>, WebSocket connection.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<p>:param <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a> $conn: WebSocket connection.</p>
 </dd></dl>
 
 <p>Example:</p>
@@ -255,7 +275,17 @@ WebSocketConnection to send a message to the client.</p>
 <dt id="Can\Server\WebSocketRoute::onClose">
 <tt class="descclassname">Can\Server\WebSocketRoute::</tt><tt class="descname">onClose</tt><big>(</big><em>CanServerWebSocketConnection $conn</em><big>)</big><a class="headerlink" href="#Can\Server\WebSocketRoute::onClose" title="Permalink to this definition">¶</a></dt>
 <dd><p>This method will be invoked if WebSocket connection $conn is closed.</p>
-<p>:param <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a> $conn: WebSocket connection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>$conn</strong> (<em>WebSocketConnection</em>) &#8211; Instance of <a class="reference internal" href="websocket_connection.html#Can\Server\WebSocketConnection" title="Can\Server\WebSocketConnection"><tt class="xref php php-class docutils literal"><span class="pre">WebSocketConnection</span></tt></a>, WebSocket connection.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>
@@ -286,7 +316,7 @@ WebSocketConnection to send a message to the client.</p>
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on Aug 11, 2012.
+      Last updated on Aug 12, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

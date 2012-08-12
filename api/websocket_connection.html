@@ -52,10 +52,10 @@
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
   <p class="topless"><a href="websocket_route.html"
-                        title="previous chapter"><tt class="docutils literal"><span class="pre">\Can\Server\WebSocketRoute</span></tt> API</a></p>
+                        title="previous chapter"><tt class="docutils literal docutils literal"><span class="pre">\Can\Server\WebSocketRoute</span></tt> API</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="router.html"
-                        title="next chapter"><tt class="docutils literal"><span class="pre">\Can\Server\Router</span></tt> API</a></p>
+                        title="next chapter"><tt class="docutils literal docutils literal docutils literal"><span class="pre">\Can\Server\Router</span></tt> API</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../sources/api/websocket_connection.txt"
@@ -145,6 +145,68 @@ instantiated manually.</p>
 </pre></div>
 </div>
 <dl class="method">
+<dt id="Can\Server\WebSocketConnection::setData">
+<tt class="descclassname">Can\Server\WebSocketConnection::</tt><tt class="descname">setData</tt><big>(</big><em>$data</em><big>)</big><a class="headerlink" href="#Can\Server\WebSocketConnection::setData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append some userdefined data to the connection. Any existing data will be overriden.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>$data</strong> (<em>mixed</em>) &#8211; Data to set.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Throws :</th><td class="field-body"><ul class="first last simple">
+<li><tt class="xref php php-class docutils literal"><span class="pre">InvalidParametersException</span></tt> If invalid amount of parameters are passed to the method.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="Can\Server\WebSocketConnection::getData">
+<tt class="descclassname">Can\Server\WebSocketConnection::</tt><tt class="descname">getData</tt><big>(</big><big>)</big><a class="headerlink" href="#Can\Server\WebSocketConnection::getData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get previously appended userdefined data from the connection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">mixed data</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>Example:</p>
+<div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">\Can\Server\Request</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\WebSocketRoute</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">\Can\Server\WebSocketConnection</span><span class="p">;</span>
+
+<span class="k">class</span> <span class="nc">MyWebSocketRoute</span> <span class="k">extends</span> <span class="nx">WebSocketRoute</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="k">function</span> <span class="nf">beforeHandshake</span><span class="p">(</span><span class="nx">Request</span> <span class="nv">$request</span><span class="p">,</span> <span class="k">array</span> <span class="nv">$args</span><span class="p">,</span> <span class="nx">WebSocketConnection</span> <span class="nv">$conn</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="nv">$conn</span><span class="o">-&gt;</span><span class="na">setData</span><span class="p">(</span><span class="k">array</span><span class="p">(</span><span class="s1">&#39;name&#39;</span> <span class="o">=&gt;</span> <span class="nv">$args</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]));</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="nv">$route</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">MyWebSocketRoute</span><span class="p">(</span>
+    <span class="s1">&#39;/&lt;name&gt;&#39;</span><span class="p">,</span>
+    <span class="k">function</span> <span class="p">(</span><span class="nv">$message</span><span class="p">,</span> <span class="nx">WebSocketConnection</span> <span class="nv">$conn</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nv">$data</span> <span class="o">=</span> <span class="nv">$conn</span><span class="o">-&gt;</span><span class="na">getData</span><span class="p">();</span>
+        <span class="nv">$conn</span><span class="o">-&gt;</span><span class="na">send</span><span class="p">(</span><span class="s1">&#39;Hello, &#39;</span> <span class="o">.</span> <span class="nv">$data</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">.</span> <span class="s1">&#39;, your message was &#39;</span> <span class="o">.</span>  <span class="nv">$message</span> <span class="o">.</span> <span class="s1">&#39;!&#39;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">);</span>
+
+<span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
+</div>
+<dl class="method">
 <dt id="Can\Server\WebSocketConnection::send">
 <tt class="descclassname">Can\Server\WebSocketConnection::</tt><tt class="descname">send</tt><big>(</big><em>$message</em><big>)</big><a class="headerlink" href="#Can\Server\WebSocketConnection::send" title="Permalink to this definition">¶</a></dt>
 <dd><p>Send message to the client.</p>
@@ -200,7 +262,7 @@ instantiated manually.</p>
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on Aug 11, 2012.
+      Last updated on Aug 12, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
