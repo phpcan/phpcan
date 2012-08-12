@@ -49,6 +49,49 @@ Example:
     
     ?>
 
+.. php:method:: setData($data)
+
+    Append some userdefined data to the connection. Any existing data will be overriden.
+
+    :param mixed $data: Data to set.
+    :throws: * :php:class:`InvalidParametersException` If invalid amount of parameters are passed to the method.
+
+
+.. php:method:: getData()
+
+    Get previously appended userdefined data from the connection.
+
+    :returns: mixed data
+
+Example:
+  
+.. code-block:: php
+
+    <?php
+
+    use \Can\Server\Request;
+    use \Can\Server\WebSocketRoute;
+    use \Can\Server\WebSocketConnection;
+    
+    class MyWebSocketRoute extends WebSocketRoute
+    {
+        public function beforeHandshake(Request $request, array $args, WebSocketConnection $conn)
+        {
+            $conn->setData(array('name' => $args['name']));
+        }
+    }
+
+    $route = new MyWebSocketRoute(
+        '/<name>',
+        function ($message, WebSocketConnection $conn) {
+            $data = $conn->getData();
+            $conn->send('Hello, ' . $data['name'] . ', your message was ' .  $message . '!');
+        }
+    );
+    
+    ?>
+
+
 .. php:method:: send($message)
 
     Send message to the client.
