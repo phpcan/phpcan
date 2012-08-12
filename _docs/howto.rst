@@ -292,6 +292,8 @@ Objects
     
 All other types will produce 500 Internal Server Error
 
+.. _tutorial-upload-files:
+
 Uploading files
 ---------------
 
@@ -377,6 +379,8 @@ form field name, `filename` - the real filename, `filesize` guess what?  and `tm
 content is stored. Please note that uploaded files (`tmp_name`) will be cleaned after :php:attr:`Request` object is destroyed 
 therefor you must copy or move this files within request handler manually to be able to access it within your application.
 
+.. _tutorial-static-server:
+
 Static server example
 ---------------------
 
@@ -413,11 +417,10 @@ Here is an example how to implement a HTTP service that servs static content.
     
     ?>
 
+.. _tutorial-websockets:
 
 WebSockets
 ----------
-
-.. _tutorial-websockets:
 
 PHP Can support server-side implementation of the WebSockets protocols hixie-76 and RFC-6455.
 Here is an example of the simple Echo WebSocket application:
@@ -495,10 +498,10 @@ every time a client send a message, the first parameter is a string message and 
 of the WebSocketConnection class, which implements :php:meth:`WebSocketConnection::send` to send a response message 
 on this connection and :php:meth:`WebSocketConnection::close` to close the connection.
 
+.. _tutorial-websockets-chat:
+
 WebSockets Chat example
 -----------------------
-
-.. _tutorial-websockets-chat:
    
     More advanced WebSocket Chat example can be found within repository in examples directory:
     https://github.com/phpcan/phpcan/tree/master/examples/WebSocketChat

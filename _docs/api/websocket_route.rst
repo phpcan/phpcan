@@ -50,9 +50,9 @@ Example:
     exists the real WebSocket connection is not established yet, so it makes no sense to call WebSocketConnection::send()
     or WebSocketConnection::close() at this time.
 
-    :param :php:class:`Request` $request: Request instance.
+    :param Request $request: :php:class:`Request` instance.
     :param array $args: associative arguments array with values of the wildcards defined within URI path.
-    :param :php:class:`WebSocketConnection` $conn: WebSocket connection associated with this request.
+    :param WebSocketConnection $conn: Instance of :php:class:`WebSocketConnection`, WebSocket connection associated with this request.
 
 Example:
   
@@ -86,13 +86,13 @@ Example:
     
     ?>
 
-.. php:method:: afterHandshake(\Can\Server\WebSocketConnection $conn)
+.. php:method:: afterHandshake(WebSocketConnection $conn)
 
     This method will be invoked after WebSocket handshake sent to the client. By default this method do
     nothing. You must extend WebSocketRoute class to override this method with your logic. At this time
     the WebSocket connection already established, so you can send a message or close this connection.
 
-    :param :php:class:`WebSocketConnection` $conn: WebSocket connection.
+    :param WebSocketConnection $conn: Instance of :php:class:`WebSocketConnection`, WebSocket connection.
 
 Example:
   
@@ -122,13 +122,13 @@ Example:
     
     ?>
 
-.. php:method:: onMessage($message, \Can\Server\WebSocketConnection $conn)
+.. php:method:: onMessage($message, WebSocketConnection $conn)
 
     This method will be invoked on incoming messages from WebSocket connection $conn. Use given
     WebSocketConnection to send a message to the client.
 
     :param string $message: Incoming WebSocket message.
-    :param :php:class:`WebSocketConnection` $conn: WebSocket connection.
+    :param WebSocketConnection $conn: Instance of :php:class:`WebSocketConnection`, WebSocket connection.
 
 Example:
   
@@ -158,5 +158,5 @@ Example:
 
     This method will be invoked if WebSocket connection $conn is closed. 
 
-    :param :php:class:`WebSocketConnection` $conn: WebSocket connection.
+    :param WebSocketConnection $conn: Instance of :php:class:`WebSocketConnection`, WebSocket connection.
 
