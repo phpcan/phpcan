@@ -187,6 +187,7 @@ struct php_can_websocket_ctx {
     struct evhttp_connection *evcon;
     zval *zroute;
     int rfc6455;
+    zval *data;
 };
 
 #define SETNOW(double_now) \
