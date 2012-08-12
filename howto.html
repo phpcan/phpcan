@@ -350,7 +350,7 @@ be set as output and <tt class="docutils literal"><span class="pre">Content-Type
 <p>All other types will produce 500 Internal Server Error</p>
 </div>
 <div class="section" id="uploading-files">
-<h2>Uploading files<a class="headerlink" href="#uploading-files" title="Permalink to this headline">¶</a></h2>
+<span id="tutorial-upload-files"></span><h2>Uploading files<a class="headerlink" href="#uploading-files" title="Permalink to this headline">¶</a></h2>
 <p>The request body of POST and PUT requests may contain form data encoded in various formats.
 The <tt class="xref php php-attr docutils literal"><span class="pre">Request::$post</span></tt> container contains parsed textual form fields, <tt class="xref php php-attr docutils literal"><span class="pre">Request::$files</span></tt> stores
 file upload informations.</p>
@@ -428,7 +428,7 @@ content is stored. Please note that uploaded files (<cite>tmp_name</cite>) will 
 therefor you must copy or move this files within request handler manually to be able to access it within your application.</p>
 </div>
 <div class="section" id="static-server-example">
-<h2>Static server example<a class="headerlink" href="#static-server-example" title="Permalink to this headline">¶</a></h2>
+<span id="tutorial-static-server"></span><h2>Static server example<a class="headerlink" href="#static-server-example" title="Permalink to this headline">¶</a></h2>
 <dl class="docutils">
 <dt>Here is an example how to implement a HTTP service that servs static content.</dt>
 <dd><ol class="first last arabic simple">
@@ -467,8 +467,8 @@ therefor you must copy or move this files within request handler manually to be 
 </div>
 </div>
 <div class="section" id="websockets">
-<h2>WebSockets<a class="headerlink" href="#websockets" title="Permalink to this headline">¶</a></h2>
-<p id="tutorial-websockets">PHP Can support server-side implementation of the WebSockets protocols hixie-76 and RFC-6455.
+<span id="tutorial-websockets"></span><h2>WebSockets<a class="headerlink" href="#websockets" title="Permalink to this headline">¶</a></h2>
+<p>PHP Can support server-side implementation of the WebSockets protocols hixie-76 and RFC-6455.
 Here is an example of the simple Echo WebSocket application:</p>
 <div class="highlight-php"><div class="highlight"><pre><span class="cp">&lt;?php</span>
 
@@ -543,8 +543,8 @@ of the WebSocketConnection class, which implements <tt class="xref php php-meth 
 on this connection and <tt class="xref php php-meth docutils literal"><span class="pre">WebSocketConnection::close</span></tt> to close the connection.</p>
 </div>
 <div class="section" id="websockets-chat-example">
-<h2>WebSockets Chat example<a class="headerlink" href="#websockets-chat-example" title="Permalink to this headline">¶</a></h2>
-<blockquote id="tutorial-websockets-chat">
+<span id="tutorial-websockets-chat"></span><h2>WebSockets Chat example<a class="headerlink" href="#websockets-chat-example" title="Permalink to this headline">¶</a></h2>
+<blockquote>
 <div>More advanced WebSocket Chat example can be found within repository in examples directory:
 <a class="reference external" href="https://github.com/phpcan/phpcan/tree/master/examples/WebSocketChat">https://github.com/phpcan/phpcan/tree/master/examples/WebSocketChat</a></div></blockquote>
 </div>
@@ -579,7 +579,7 @@ on this connection and <tt class="xref php php-meth docutils literal"><span clas
     </div>
     <div class="footer">
         &copy; Copyright 2011-2012, Dmitry Vinogradov &lt;dmitri.vinogradov@gmail.com&gt;.
-      Last updated on Aug 11, 2012.
+      Last updated on Aug 12, 2012.
       Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>

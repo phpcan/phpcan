@@ -10,6 +10,16 @@
 
    Route class.
    
+.. php:const:: METHOD_GET
+.. php:const:: METHOD_POST
+.. php:const:: METHOD_PUT
+.. php:const:: METHOD_DELETE
+.. php:const:: METHOD_HEAD
+.. php:const:: METHOD_OPTIONS
+.. php:const:: METHOD_TRACE
+.. php:const:: METHOD_CONNECT
+.. php:const:: METHOD_PATCH
+   
 .. php:method:: __construct(string $uri, callable $handler, int $methods = Route::METHOD_GET)
 
     Constructor. Instantiates new Server route.
@@ -47,10 +57,11 @@ Example:
     Default request handler. Will be invoked if no request handler will be paased to the
     constructor. By default this method throws :php:class:`InvalidCallbackException` with
     "Not implementd" error message. You must extend the Route class and override this method
-    with request handler implementation.
+    with request handler implementation. 
 
-    :param :php:class:`Request` $request: Request instance.
+    :param Request $request: :php:class:`Request` instance.
     :param array $args: associative arguments array with values of the wildcards defined within URI path.
+    :returns: mixed. See :ref:`tutorial-output` for detailed information.
 
 Example:
   
@@ -93,7 +104,7 @@ Example:
 
     Set HTTP method this route applies to.
     
-    :param int $methods: HTTP request methods bitmask this route associated with.
+    :param int $methods: HTTP request methods bitmask this route associated with,
     :throws: * :php:class:`InvalidParametersException` If invalid parameters are passed to the method.
 
 .. php:method:: getHandler()
@@ -101,14 +112,3 @@ Example:
     Get request handler associated with this Route instance.
     
     :returns: callable
-    
-.. php:const:: METHOD_GET
-.. php:const:: METHOD_POST
-.. php:const:: METHOD_PUT
-.. php:const:: METHOD_DELETE
-.. php:const:: METHOD_HEAD
-.. php:const:: METHOD_OPTIONS
-.. php:const:: METHOD_TRACE
-.. php:const:: METHOD_CONNECT
-.. php:const:: METHOD_PATCH
-
