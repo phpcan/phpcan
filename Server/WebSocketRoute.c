@@ -87,6 +87,7 @@ static zend_object_value server_websocket_ctx_ctor(zend_class_entry *ce TSRMLS_D
     ctx->req = NULL;
     ctx->zroute = NULL;
     ctx->id = NULL;
+    ctx->data = NULL;
     retval.handle = zend_objects_store_put(ctx,       
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_websocket_ctx_dtor,
@@ -109,6 +110,10 @@ static void server_websocket_ctx_dtor(void *object TSRMLS_DC)
 
     if (ctx->req) {
         evhttp_request_free(ctx->req);
+    }
+    
+    if (ctx->data) {
+        zval_ptr_dtor(&ctx->data);
     }
 
     zend_objects_store_del_ref(&ctx->refhandle TSRMLS_CC);
@@ -1016,6 +1021,50 @@ static PHP_METHOD(CanServerWebSocketContext, setTimeout)
 }
 
 /**
+ * Append user-defined data to the connection
+ *
+ */
+static PHP_METHOD(CanServerWebSocketContext, setData)
+{
+    zval *data = NULL;
+    
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "z", &data)
+    ) {
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "%s%s%s(mixed $data)",
+            class_name, space, get_active_function_name(TSRMLS_C)
+        );
+        return;
+    }
+    
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    if (ctx->data != NULL) {
+        zval_ptr_dtor(&ctx->data);
+    }
+    zval_add_ref(&data);
+    ctx->data = data;
+}
+
+/**
+ * Get previously appended user-defined data from the connection.
+ *
+ */
+static PHP_METHOD(CanServerWebSocketContext, getData)
+{   
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    if (ctx->data != NULL) {
+        RETURN_ZVAL(ctx->data, 1, 0);
+    }
+    RETURN_FALSE;
+}
+
+/**
  * Send a message
  */
 static PHP_METHOD(CanServerWebSocketContext, send) 
@@ -1087,6 +1136,8 @@ static zend_function_entry server_websocket_route_methods[] = {
 
 static zend_function_entry server_websocket_ctx_methods[] = {
     PHP_ME(CanServerWebSocketContext, setTimeout, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketContext, setData,    NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketContext, getData,    NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketContext, send,       NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketContext, close,      NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
