@@ -61,7 +61,7 @@ Example:
 
     :param Request $request: :php:class:`Request` instance.
     :param array $args: associative arguments array with values of the wildcards defined within URI path.
-    :return mixed. See :ref:`tutorial-output` for detailed information.
+    :returns: mixed. See :ref:`tutorial-output` for detailed information.
 
 Example:
   
