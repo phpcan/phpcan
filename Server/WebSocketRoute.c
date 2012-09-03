@@ -33,7 +33,7 @@ static zend_object_value server_websocket_route_ctor(zend_class_entry *ce TSRMLS
     
     route = ecalloc(1, sizeof(*route));
     zend_object_std_init(&route->std, ce TSRMLS_CC);
-    object_properties_init(&route->std, ce);
+    PHP_CAN_INIT_OBJ_PROPS(route, ce);
     route->handler = NULL;
     route->methods = PHP_CAN_SERVER_ROUTE_METHOD_GET;
     route->regexp = NULL;
@@ -81,7 +81,7 @@ static zend_object_value server_websocket_ctx_ctor(zend_class_entry *ce TSRMLS_D
 
     ctx = ecalloc(1, sizeof(*ctx));
     zend_object_std_init(&ctx->std, ce TSRMLS_CC);
-    object_properties_init(&ctx->std, ce);
+    PHP_CAN_INIT_OBJ_PROPS(ctx, ce);
     ctx->timeout = 360; // one hour by default
     ctx->evcon = NULL;
     ctx->req = NULL;
