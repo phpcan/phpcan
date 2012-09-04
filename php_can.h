@@ -37,10 +37,15 @@ extern zend_module_entry can_module_entry;
 #define zchar char
 #define ZEND_LITERAL_KEY_DC
 #define ZEND_LITERAL_KEY_CC
+#define PHP_CAN_INIT_OBJ_PROPS(obj, ce)                          \
+    zval *tmp;                                                   \
+    zend_hash_copy(obj->std.properties, &ce->default_properties, \
+    (copy_ctor_func_t) zval_property_ctor,(void *) &tmp, sizeof(zval *));
 #else
 #define zchar const char
 #define ZEND_LITERAL_KEY_DC , const zend_literal *key
 #define ZEND_LITERAL_KEY_CC , key
+#define PHP_CAN_INIT_OBJ_PROPS(obj, ce) object_properties_init(&obj->std, ce);
 #endif
 
 #ifndef CHECK_ZVAL_NULL_PATH

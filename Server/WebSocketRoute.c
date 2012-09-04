@@ -33,7 +33,7 @@ static zend_object_value server_websocket_route_ctor(zend_class_entry *ce TSRMLS
     
     route = ecalloc(1, sizeof(*route));
     zend_object_std_init(&route->std, ce TSRMLS_CC);
-    object_properties_init(&route->std, ce);
+    PHP_CAN_INIT_OBJ_PROPS(route, ce);
     route->handler = NULL;
     route->methods = PHP_CAN_SERVER_ROUTE_METHOD_GET;
     route->regexp = NULL;
@@ -81,12 +81,13 @@ static zend_object_value server_websocket_ctx_ctor(zend_class_entry *ce TSRMLS_D
 
     ctx = ecalloc(1, sizeof(*ctx));
     zend_object_std_init(&ctx->std, ce TSRMLS_CC);
-    object_properties_init(&ctx->std, ce);
+    PHP_CAN_INIT_OBJ_PROPS(ctx, ce);
     ctx->timeout = 360; // one hour by default
     ctx->evcon = NULL;
     ctx->req = NULL;
     ctx->zroute = NULL;
     ctx->id = NULL;
+    ctx->data = NULL;
     retval.handle = zend_objects_store_put(ctx,       
             (zend_objects_store_dtor_t)zend_objects_destroy_object,
             server_websocket_ctx_dtor,
@@ -109,6 +110,10 @@ static void server_websocket_ctx_dtor(void *object TSRMLS_DC)
 
     if (ctx->req) {
         evhttp_request_free(ctx->req);
+    }
+    
+    if (ctx->data) {
+        zval_ptr_dtor(&ctx->data);
     }
 
     zend_objects_store_del_ref(&ctx->refhandle TSRMLS_CC);
@@ -175,7 +180,8 @@ static HashTable *get_properties(zval *object TSRMLS_DC)
 unsigned long parse_key(const char *key)
 {
     unsigned long i, spaces = 0, num = 0;
-    for (i=0; i < strlen(key); i++) {
+    size_t len = strlen(key);
+    for (i=0; i < len; i++) {
         if (key[i] == ' ') {
             spaces += 1;
         }
@@ -766,6 +772,25 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         
     } else if (hdr_wskey1 != NULL && hdr_wskey2 != NULL) {
         
+        if (php_can_strpos((char *)hdr_wskey1, " ", 0) == FAILURE || php_can_strpos((char *)hdr_wskey2, " ", 0) == FAILURE) {
+            request->response_code = 400;
+            spprintf(&request->error, 0, "Missing spaces in Sec-WebSocket-Keys");
+            return;
+        }
+        
+        struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
+        struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon);
+        struct evbuffer *buffer = bufferevent_get_input(bufev);
+        unsigned char key3[8];
+        int key3len = evbuffer_remove(buffer, key3, 8);
+
+        if (key3len != 8) {
+            request->response_code = 400;
+            spprintf(&request->error, 0, "Expecting 8 bytes body token");
+            return;
+        }
+        
+                
         evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Origin", hdr_origin);
         
         char *location = NULL;
@@ -774,12 +799,6 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
                 evhttp_uri_get_path(request->req->uri_elems));
         evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Location", location);
         efree(location);
-        
-        struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
-        struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon);
-        struct evbuffer *buffer = bufferevent_get_input(bufev);
-        unsigned char key3[8];
-        evbuffer_remove(buffer, key3, 8);
        
         body = gen_sum(hdr_wskey1, hdr_wskey2, key3); 
         
@@ -1016,6 +1035,50 @@ static PHP_METHOD(CanServerWebSocketContext, setTimeout)
 }
 
 /**
+ * Append user-defined data to the connection
+ *
+ */
+static PHP_METHOD(CanServerWebSocketContext, setData)
+{
+    zval *data = NULL;
+    
+    if (FAILURE == zend_parse_parameters_ex(ZEND_PARSE_PARAMS_QUIET, ZEND_NUM_ARGS() TSRMLS_CC,
+            "z", &data)
+    ) {
+        zchar *space, *class_name = get_active_class_name(&space TSRMLS_CC);
+        php_can_throw_exception(
+            ce_can_InvalidParametersException TSRMLS_CC,
+            "%s%s%s(mixed $data)",
+            class_name, space, get_active_function_name(TSRMLS_C)
+        );
+        return;
+    }
+    
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    if (ctx->data != NULL) {
+        zval_ptr_dtor(&ctx->data);
+    }
+    zval_add_ref(&data);
+    ctx->data = data;
+}
+
+/**
+ * Get previously appended user-defined data from the connection.
+ *
+ */
+static PHP_METHOD(CanServerWebSocketContext, getData)
+{   
+    struct php_can_websocket_ctx *ctx = (struct php_can_websocket_ctx*)
+        zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+    if (ctx->data != NULL) {
+        RETURN_ZVAL(ctx->data, 1, 0);
+    }
+    RETURN_FALSE;
+}
+
+/**
  * Send a message
  */
 static PHP_METHOD(CanServerWebSocketContext, send) 
@@ -1087,6 +1150,8 @@ static zend_function_entry server_websocket_route_methods[] = {
 
 static zend_function_entry server_websocket_ctx_methods[] = {
     PHP_ME(CanServerWebSocketContext, setTimeout, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketContext, setData,    NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(CanServerWebSocketContext, getData,    NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketContext, send,       NULL, ZEND_ACC_PUBLIC)
     PHP_ME(CanServerWebSocketContext, close,      NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}

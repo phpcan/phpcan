@@ -30,7 +30,7 @@ static zend_object_value server_route_ctor(zend_class_entry *ce TSRMLS_DC)
 
     route = ecalloc(1, sizeof(*route));
     zend_object_std_init(&route->std, ce TSRMLS_CC);
-    object_properties_init(&route->std, ce);
+    PHP_CAN_INIT_OBJ_PROPS(route, ce);
     route->handler = NULL;
     route->methods = 0;
     route->regexp = NULL;
