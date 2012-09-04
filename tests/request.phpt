@@ -6,7 +6,7 @@
 <?php
 function test($code, $expected, $meth = 'GET', $rHdrs = null, $headers = '')
 {
-    $str = '$s=new Can\Server("0.0.0.0", 45678);' . 
+    $str = '$s=new Can\Server("127.0.0.1", 45678);' . 
            '$s->start(new Can\Server\Router(array(' . 
            'new Can\Server\Route("/<uri>",' . 
            'function($r, $a) {' . 
