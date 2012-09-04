@@ -180,7 +180,8 @@ static HashTable *get_properties(zval *object TSRMLS_DC)
 unsigned long parse_key(const char *key)
 {
     unsigned long i, spaces = 0, num = 0;
-    for (i=0; i < strlen(key); i++) {
+    size_t len = strlen(key);
+    for (i=0; i < len; i++) {
         if (key[i] == ' ') {
             spaces += 1;
         }
@@ -771,6 +772,25 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
         
     } else if (hdr_wskey1 != NULL && hdr_wskey2 != NULL) {
         
+        if (php_can_strpos((char *)hdr_wskey1, " ", 0) == FAILURE || php_can_strpos((char *)hdr_wskey2, " ", 0) == FAILURE) {
+            request->response_code = 400;
+            spprintf(&request->error, 0, "Missing spaces in Sec-WebSocket-Keys");
+            return;
+        }
+        
+        struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
+        struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon);
+        struct evbuffer *buffer = bufferevent_get_input(bufev);
+        unsigned char key3[8];
+        int key3len = evbuffer_remove(buffer, key3, 8);
+
+        if (key3len != 8) {
+            request->response_code = 400;
+            spprintf(&request->error, 0, "Expecting 8 bytes body token");
+            return;
+        }
+        
+                
         evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Origin", hdr_origin);
         
         char *location = NULL;
@@ -779,12 +799,6 @@ void server_websocket_route_handle_request(zval *zroute, zval *zrequest, zval *p
                 evhttp_uri_get_path(request->req->uri_elems));
         evhttp_add_header(request->req->output_headers, "Sec-WebSocket-Location", location);
         efree(location);
-        
-        struct evhttp_connection *evcon = evhttp_request_get_connection(request->req);
-        struct bufferevent *bufev = evhttp_connection_get_bufferevent(evcon);
-        struct evbuffer *buffer = bufferevent_get_input(bufev);
-        unsigned char key3[8];
-        evbuffer_remove(buffer, key3, 8);
        
         body = gen_sum(hdr_wskey1, hdr_wskey2, key3); 
         
