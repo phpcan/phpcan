@@ -23,7 +23,6 @@ $router->addRoute(new Route('/<file:path>', function ($request) {}, Route::METHO
 foreach ($router as $i => $route) {
     var_dump($route->getUri());
     var_dump($route->getUri(true));
-    var_dump(gettype($route->getHandler()));
     var_dump($route->getMethod());
 }
 $router->rewind();
@@ -41,19 +40,15 @@ bool(true)
 bool(true)
 string(1) "/"
 bool(false)
-string(6) "object"
 int(1)
 string(9) "/<id:int>"
 string(18) "^/(?<id>-?[0-9]+)$"
-string(6) "object"
 int(3)
 string(11) "/<id:float>"
 string(19) "^/(?<id>-?[0-9.]+)$"
-string(6) "object"
 int(10)
 string(12) "/<file:path>"
 string(15) "^/(?<file>.+?)$"
-string(6) "object"
 int(18)
 0 => /
 1 => /<id:int>
