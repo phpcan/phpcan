@@ -24,6 +24,7 @@
 #include "ext/date/php_date.h"
 #include "ext/standard/php_array.h"
 #include "ext/standard/php_string.h"
+#include "ext/standard/php_smart_str.h"
 #include "ext/standard/php_rand.h"
 #include "ext/standard/md5.h"
 #include "zend_interfaces.h"
