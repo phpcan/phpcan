@@ -31,7 +31,6 @@ extern zend_module_entry can_module_entry;
 
 #define PHP_CAN_NS "Can"
 #define PHP_CAN_SERVER_NS ZEND_NS_NAME(PHP_CAN_NS, "Server")
-#define PHP_CAN_CLIENT_NS ZEND_NS_NAME(PHP_CAN_NS, "Client")
 
 #if PHP_VERSION_ID < 50399
 #define zchar char
