@@ -150,7 +150,7 @@ struct php_can_server_router {
     /**
      * Container where we will search through for the routes
      * in case we cannot find the route in router->method_routes
-     * Actually the search through this container will be made only 
+     * Actually the search through this container will be made only
      * to determine what kind of error response code we must send
      * back to the client: 404 Not Found or 405 Method Not Allowed
      */
@@ -199,9 +199,9 @@ struct php_can_websocket_ctx {
 #define WRITELOG(server, msg, len) \
     if (server->logformat_len) { \
         if (server->logfile == NULL) { \
-            write(STDOUT_FILENO, msg, len); \
+            ssize_t res = write(STDOUT_FILENO, msg, len); \
         } else { \
-            php_stream_write(server->logfile, msg, len); \
+            size_t res = php_stream_write(server->logfile, msg, len); \
         } \
     }
 
@@ -267,7 +267,7 @@ struct php_can_websocket_ctx {
     efree(logentry->uri); \
     efree(logentry->query); \
     efree(logentry->error); \
-    efree(logentry); 
+    efree(logentry);
 
 PHP_MINIT_FUNCTION(can_server);
 PHP_MSHUTDOWN_FUNCTION(can_server);
