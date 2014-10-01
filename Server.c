@@ -207,8 +207,9 @@ static void forward_request(const char *url, zval *zrequest, struct php_can_serv
             ctx->request_id = request_counter;
             ctx->zrequest = zrequest;
             ctx->server = server;
+            int port = evhttp_uri_get_port(uri);
             ctx->evcon = evhttp_connection_base_new(CAN_G(can_event_base), NULL,
-                    evhttp_uri_get_host(uri), evhttp_uri_get_port(uri));
+                    evhttp_uri_get_host(uri), port == -1 ? 80 : port);
             if (!ctx->evcon) {
                 request->response_code = 500;
                 spprintf(&request->error, 0, "%s", "Cannot create new evhttp_connection\n");
@@ -239,6 +240,12 @@ static void forward_request(const char *url, zval *zrequest, struct php_can_serv
                                 }
                             }
                         }
+                    }
+                    
+                    long buffer_len = EVBUFFER_LENGTH(request->req->input_buffer);
+                    if (buffer_len > 0) {
+                        struct evbuffer * output_buffer = evhttp_request_get_output_buffer(c_req);
+                        evbuffer_add_buffer(output_buffer, request->req->input_buffer);
                     }
 
                     char *forwardUri = NULL;
